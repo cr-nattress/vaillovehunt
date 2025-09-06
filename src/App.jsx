@@ -8,7 +8,6 @@ import Header from './features/app/Header'
 import SettingsPanel from './features/app/SettingsPanel'
 import StopsList from './features/app/StopsList'
 import { UploadProvider } from './features/upload/UploadContext'
-import { useToastActions } from './features/notifications/ToastProvider.tsx'
 import { useAppStore } from './store/appStore'
 import { getPathParams, isValidParamSet, normalizeParams } from './utils/url'
 import { slugify } from './utils/slug'
@@ -28,9 +27,6 @@ import { getRandomStops } from './utils/random'
  */
 
 export default function App() {
-  // Toast notifications
-  const { success, error: showError, warning, info } = useToastActions()
-  
   // Use Zustand store for central state management
   const { locationName, teamName, sessionId, eventName, setLocationName, setTeamName, setEventName, lockedByQuery, setLockedByQuery } = useAppStore()
   
@@ -210,7 +206,7 @@ export default function App() {
       
     } catch (error) {
       console.error('❌ Photo upload failed:', error)
-      showError(`Failed to upload photo: ${error.message}`)
+      console.error(`Failed to upload photo: ${error.message}`)
       
       // End loading state on error
       setUploadingStops(prev => {
@@ -267,7 +263,7 @@ export default function App() {
       
       if (completedStops.length === 0) {
         console.warn('⚠️ No completed stops found')
-        warning('No completed stops with photos found!')
+        console.warn('No completed stops with photos found!')
         return
       }
 
@@ -302,7 +298,7 @@ export default function App() {
       console.error('  Error name:', error.name)
       console.error('  Error message:', error.message)
       console.error('  Error stack:', error.stack)
-      showError(`Failed to create your prize collage: ${error.message}`)
+      console.error(`Failed to create your prize collage: ${error.message}`)
     } finally {
       console.log('🏁 Prize collage creation finished')
       setCollageLoading(false)
@@ -372,11 +368,11 @@ export default function App() {
       } else {
         // Fallback: copy text to clipboard and show toast notification.
         await navigator.clipboard.writeText(`${text} ${url}`)
-        success('Link copied to clipboard ✨')
+        console.log('Link copied to clipboard ✨')
       }
     } catch (err) {
       console.warn('Failed to share or copy link', err)
-      showError('Failed to share or copy link')
+      console.error('Failed to share or copy link')
     }
   }
 
@@ -388,27 +384,37 @@ export default function App() {
       eventName={eventName}
     >
       <div className='min-h-screen text-slate-900' style={{backgroundColor: 'var(--color-cream)'}}>
-      <Header 
-        isMenuOpen={isMenuOpen}
-        onToggleMenu={() => setIsMenuOpen(!isMenuOpen)}
-        completeCount={completeCount}
-        totalStops={stops.length}
-        percent={percent}
-        onReset={reset}
-        onToggleTips={() => setShowTips(!showTips)}
-      />
+        
+        <Header 
+          isMenuOpen={isMenuOpen}
+          onToggleMenu={() => setIsMenuOpen(!isMenuOpen)}
+          completeCount={completeCount}
+          totalStops={stops.length}
+          percent={percent}
+          onReset={reset}
+          onToggleTips={() => setShowTips(!showTips)}
+        />
 
-      <main className='max-w-screen-sm mx-auto px-4 py-5'>
-        <div className='border rounded-lg shadow-sm p-4 relative' style={{
+        {/* Live region for screen reader announcements */}
+        <div id="status-announcements" aria-live="polite" aria-atomic="true" className="sr-only"></div>
+        
+        <main id="main-content" className='max-w-screen-sm mx-auto px-4 py-5' role="main" aria-label="Scavenger hunt main content">
+        <section className='border rounded-lg shadow-sm p-4 relative' style={{
           backgroundColor: 'var(--color-white)',
           borderColor: 'var(--color-light-grey)'
-        }}>
+        }} aria-labelledby="location-heading">
           <div className='flex items-center gap-2'>
-            <h2 className='text-xl font-semibold'>{locationName}</h2>
+            <h1 id="location-heading" className='text-xl font-semibold'>{locationName}</h1>
             {!lockedByQuery && (
               <button 
                 onClick={() => setIsEditMode(!isEditMode)}
-                className='p-2 rounded-full transition-all duration-150 hover:scale-110 active:scale-95'
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setIsEditMode(!isEditMode)
+                  }
+                }}
+                className='p-2 rounded-full transition-all duration-150 hover:scale-110 active:scale-95 focus:ring-2 focus:ring-opacity-50'
                 style={{
                   color: 'var(--color-warm-grey)',
                   backgroundColor: 'transparent'
@@ -421,8 +427,17 @@ export default function App() {
                   e.target.style.color = 'var(--color-warm-grey)'
                   e.target.style.backgroundColor = 'transparent'
                 }}
-                title='Settings - Change location and team'
-                aria-label='Open settings'
+                onFocus={(e) => {
+                  e.target.style.color = 'var(--color-cabernet)'
+                  e.target.style.backgroundColor = 'var(--color-light-pink)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.color = 'var(--color-warm-grey)'
+                  e.target.style.backgroundColor = 'transparent'
+                }}
+                aria-label={`${isEditMode ? 'Close' : 'Open'} settings panel to change location and team information`}
+                aria-expanded={isEditMode}
+                aria-controls="settings-panel"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
@@ -430,7 +445,9 @@ export default function App() {
                 </svg>
               </button>
             )}
-            {/* Copy Link button (Phase 5) */}
+            {/* Language Switcher */}
+            
+            {/* Copy Link button */}
             <button
               onClick={async () => {
                 try {
@@ -441,19 +458,40 @@ export default function App() {
                   const path = `/${loc}/${evt}/${team}`
                   const url = `${origin}${path}`
                   await navigator.clipboard.writeText(url)
-                  success('Link copied to clipboard ✨')
+                  console.log('Link copied to clipboard ✨')
                 } catch (err) {
                   console.warn('Failed to copy link', err)
-                  showError('Failed to copy link to clipboard')
+                  console.error('Failed to copy link to clipboard')
                 }
               }}
-              className='p-2 rounded-full transition-all duration-150 hover:scale-110 active:scale-95'
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  e.target.click()
+                }
+              }}
+              className='p-2 rounded-full transition-all duration-150 hover:scale-110 active:scale-95 focus:ring-2 focus:ring-opacity-50'
               style={{
                 color: 'var(--color-warm-grey)',
                 backgroundColor: 'transparent'
               }}
-              title='Copy path-based link for this assignment'
-              aria-label='Copy link'
+              onMouseEnter={(e) => {
+                e.target.style.color = 'var(--color-cabernet)'
+                e.target.style.backgroundColor = 'var(--color-light-pink)'
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.color = 'var(--color-warm-grey)'
+                e.target.style.backgroundColor = 'transparent'
+              }}
+              onFocus={(e) => {
+                e.target.style.color = 'var(--color-cabernet)'
+                e.target.style.backgroundColor = 'var(--color-light-pink)'
+              }}
+              onBlur={(e) => {
+                e.target.style.color = 'var(--color-warm-grey)'
+                e.target.style.backgroundColor = 'transparent'
+              }}
+              aria-label='Copy shareable link to clipboard'
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 010 5.656l-2 2a4 4 0 11-5.656-5.656l1-1" />
@@ -481,8 +519,14 @@ export default function App() {
               )}
               
               {percent === 100 ? (
-                <div className='mt-2'>
-                  <p className='text-lg font-semibold' style={{color: 'var(--color-cabernet)'}}>🎉 Congratulations! You completed the scavenger hunt.</p>
+                <div className='mt-2' role="alert" aria-live="assertive">
+                  <p className='text-lg font-semibold' style={{color: 'var(--color-cabernet)'}}>
+                    <span role="img" aria-label="Party celebration">🎉</span> 
+                    Congratulations! You completed the scavenger hunt.
+                  </p>
+                  <p className="sr-only">
+                    All {completeCount} stops have been completed successfully. Well done!
+                  </p>
                 </div>
               ) : (
                 <>
@@ -499,7 +543,7 @@ export default function App() {
               )}
             </>
           )}
-        </div>
+        </section>
 
         {/* Album Viewer Component */}
         <AlbumViewer 

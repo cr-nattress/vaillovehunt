@@ -1,11 +1,31 @@
-import React from 'react'
+import React, { memo, useMemo, useCallback } from 'react'
 import ProgressRing from '../../components/ProgressRing'
 
 const PLACEHOLDER = '/images/selfie-placeholder.svg'
 
+interface Stop {
+  id: string
+  title: string
+  emoji: string
+  hints: string[]
+  answer: string
+  challenge: string
+  funFact: string
+  maps: string
+  originalNumber?: number
+}
+
+interface StopProgress {
+  done: boolean
+  notes: string
+  photo: string | null
+  revealedHints: number
+  completedAt?: string
+}
+
 interface StopCardProps {
-  stop: any
-  progress: any
+  stop: Stop
+  progress: Record<string, StopProgress>
   onUpload: (stopId: string, file: File) => Promise<void>
   onToggleExpanded: (stopId: string) => void
   expanded: boolean
@@ -15,7 +35,7 @@ interface StopCardProps {
   index: number
 }
 
-export default function StopCard({
+const StopCard = memo(function StopCard({
   stop,
   progress,
   onUpload,
@@ -26,24 +46,46 @@ export default function StopCard({
   revealNextHint,
   index
 }: StopCardProps) {
-  const state = progress[stop.id] || { done: false, notes: '', photo: null, revealedHints: 1 }
-  const displayImage = state.photo || PLACEHOLDER
-  const isTransitioning = transitioningStops.has(stop.id)
-  const isUploading = uploadingStops.has(stop.id)
+  // Memoize expensive calculations
+  const state = useMemo(() => 
+    progress[stop.id] || { done: false, notes: '', photo: null, revealedHints: 1 }, 
+    [progress, stop.id]
+  )
+  
+  const displayImage = useMemo(() => state.photo || PLACEHOLDER, [state.photo])
+  const isTransitioning = useMemo(() => transitioningStops.has(stop.id), [transitioningStops, stop.id])
+  const isUploading = useMemo(() => uploadingStops.has(stop.id), [uploadingStops, stop.id])
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Memoize event handlers to prevent unnecessary re-renders
+  const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file && file.type.startsWith('image/')) {
       await onUpload(stop.id, file)
     }
-  }
+  }, [onUpload, stop.id])
+
+  const handleToggleExpanded = useCallback(() => {
+    if (state.done && !isTransitioning) {
+      onToggleExpanded(stop.id)
+    }
+  }, [onToggleExpanded, stop.id, state.done, isTransitioning])
 
   return (
-    <div 
+    <article 
       className={`mt-6 shadow-sm border rounded-lg p-4 transition-all duration-1000 ease-in-out ${
-        state.done ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
+        state.done ? 'cursor-pointer hover:shadow-md transition-shadow focus:shadow-md focus:ring-2 focus:ring-opacity-50' : ''
       }`}
-      onClick={state.done && !isTransitioning ? () => onToggleExpanded(stop.id) : undefined}
+      onClick={handleToggleExpanded}
+      onKeyDown={(e) => {
+        if (state.done && !isTransitioning && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          handleToggleExpanded()
+        }
+      }}
+      tabIndex={state.done ? 0 : -1}
+      role={state.done ? 'button' : 'article'}
+      aria-expanded={state.done ? expanded : undefined}
+      aria-label={state.done ? `${expanded ? 'Collapse' : 'Expand'} completed stop: ${stop.title}` : undefined}
       style={{
         backgroundColor: isTransitioning ? 'var(--color-light-pink)' : 'var(--color-white)',
         borderColor: isTransitioning 
@@ -70,7 +112,7 @@ export default function StopCard({
                 </div>
               ) : (
                 <ProgressRing 
-                  number={stop.originalNumber} 
+                  number={stop.originalNumber ?? index + 1} 
                   isCompleted={false}
                   size={36}
                 />
@@ -83,14 +125,21 @@ export default function StopCard({
               </span>
             )}
             
-            {/* Minimal Icon Badge hint button */}
+            {/* Hint reveal button */}
             {(!state.done || expanded) && !state.photo && state.revealedHints < stop.hints.length && (
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   revealNextHint()
                 }}
-                className='relative w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-sm'
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    revealNextHint()
+                  }
+                }}
+                className='relative w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-sm focus:ring-2 focus:ring-opacity-50 focus:outline-none'
                 style={{ 
                   backgroundColor: '#f8fafc', 
                   border: '1px solid #e2e8f0' 
@@ -101,6 +150,13 @@ export default function StopCard({
                 onMouseLeave={(e) => {
                   (e.target as HTMLElement).style.backgroundColor = '#f8fafc'
                 }}
+                onFocus={(e) => {
+                  (e.target as HTMLElement).style.backgroundColor = '#f1f5f9'
+                }}
+                onBlur={(e) => {
+                  (e.target as HTMLElement).style.backgroundColor = '#f8fafc'
+                }}
+                aria-label={`Reveal hint ${state.revealedHints + 1} of ${stop.hints.length} for ${stop.title}`}
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" style={{ color: 'var(--color-cabernet)' }}>
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
@@ -128,7 +184,7 @@ export default function StopCard({
                     return (
                       <div 
                         key={hintIndex}
-                        className='border-l-3 p-3 rounded-r-lg transition-all duration-300'
+                        className='border-l-4 p-3 rounded-r-lg transition-all duration-300'
                         style={{
                           backgroundColor: hintConfig.bg,
                           borderColor: hintConfig.border,
@@ -168,7 +224,7 @@ export default function StopCard({
                 </div>
               )}
               {/* If this image fails to load, confirm the path root (see PHOTO_GUIDES note). */}
-              {displayImage && <img src={displayImage} alt='Selfie' className='mt-2 rounded-md object-cover w-full h-40' onError={(e) => {(e.target as HTMLElement).style.display='none'}} />}
+              {displayImage && <img src={displayImage} alt={state.photo ? `Photo for ${stop.title}` : 'Placeholder for photo upload'} className='mt-2 rounded-md object-cover w-full h-40' onError={(e) => {(e.target as HTMLElement).style.display='none'}} />}
               <div className='mt-2 flex items-center gap-2 text-xs text-slate-500'>
                 {state.photo ? '✨ Your photo' : '📷 Capture a creative selfie together at this location.'}
               </div>
@@ -181,12 +237,13 @@ export default function StopCard({
                 type='file' 
                 accept='image/*' 
                 onChange={handlePhotoUpload}
-                className='hidden'
+                className='sr-only'
                 id={`file-${stop.id}`}
+                aria-describedby={`upload-help-${stop.id}`}
               />
               <label 
                 htmlFor={`file-${stop.id}`}
-                className={`w-full px-4 py-3 text-white font-medium rounded-lg cursor-pointer flex items-center justify-center gap-2 transition-all duration-200 transform ${
+                className={`w-full px-4 py-3 text-white font-medium rounded-lg cursor-pointer flex items-center justify-center gap-2 transition-all duration-200 transform focus:ring-2 focus:ring-offset-2 focus:ring-opacity-50 focus:outline-none ${
                   isUploading 
                     ? 'cursor-wait hover:scale-[1.02] active:scale-[0.98]' 
                     : 'hover:scale-[1.02] active:scale-[0.98]'
@@ -194,7 +251,20 @@ export default function StopCard({
                 style={{ backgroundColor: isUploading ? 'var(--color-warm-grey)' : 'var(--color-cabernet)' }} 
                 onMouseEnter={(e) => { if (!isUploading) (e.target as HTMLElement).style.backgroundColor = 'var(--color-cabernet-hover)' }} 
                 onMouseLeave={(e) => { if (!isUploading) (e.target as HTMLElement).style.backgroundColor = 'var(--color-cabernet)' }}
+                onFocus={(e) => { if (!isUploading) (e.target as HTMLElement).style.backgroundColor = 'var(--color-cabernet-hover)' }}
+                onBlur={(e) => { if (!isUploading) (e.target as HTMLElement).style.backgroundColor = 'var(--color-cabernet)' }}
                 onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    document.getElementById(`file-${stop.id}`)?.click()
+                  }
+                }}
+                tabIndex={0}
+                role="button"
+                aria-disabled={isUploading}
+                aria-label={isUploading ? 'Processing photo upload' : `Upload photo for ${stop.title}`}
               >
                 {isUploading ? (
                   <>
@@ -208,6 +278,9 @@ export default function StopCard({
                   <>📸 Upload Photo</>
                 )}
               </label>
+              <div id={`upload-help-${stop.id}`} className="sr-only">
+                Select an image file to upload as your photo for this stop
+              </div>
             </div>
           )}
 
@@ -218,6 +291,8 @@ export default function StopCard({
           )}
         </>
       )}
-    </div>
+    </article>
   )
-}
+})
+
+export default StopCard
