@@ -1,0 +1,73 @@
+{
+  "app": {
+    "title": "Búsqueda del Tesoro en Vail",
+    "description": "Una experiencia interactiva de cita para parejas explorando ubicaciones románticas en Vail"
+  },
+  "navigation": {
+    "skipToMain": "Saltar al contenido principal",
+    "settings": "Configuración",
+    "copyLink": "Copiar Enlace"
+  },
+  "settings": {
+    "heading": "Editar Configuración",
+    "description": "Configure su organización, evento e información del equipo para esta búsqueda del tesoro.",
+    "organization": "Organización",
+    "organizationHelp": "La selección de organización está actualmente deshabilitada",
+    "event": "Evento",
+    "eventHelp": "Ingrese el nombre de su evento u ocasión",
+    "eventPlaceholder": "Ingrese el nombre del evento",
+    "team": "Equipo",
+    "teamHelp": "Ingrese el nombre de su equipo o pareja",
+    "teamPlaceholder": "Ingrese el nombre de su equipo",
+    "saveChanges": "Guardar Cambios",
+    "saveHelp": "Guarde su configuración de organización, evento y equipo",
+    "cancel": "Cancelar",
+    "cancelHelp": "Cancelar la edición y cerrar el panel de configuración"
+  },
+  "progress": {
+    "heading": "Progreso de la Búsqueda del Tesoro",
+    "label": "Progreso",
+    "complete": "{{percent}}% Completado",
+    "stopsCount": "{{completed}} de {{total}} paradas",
+    "progressDescription": "Progreso: {{completed}} de {{total}} paradas completadas, {{percent}} por ciento"
+  },
+  "stops": {
+    "expandCompleted": "{{action}} parada completada: {{title}}",
+    "revealHint": "Revelar pista {{current}} de {{total}} para {{title}}",
+    "photoComplete": "✅ Foto Completa",
+    "yourPhoto": "✨ Tu foto",
+    "capturePhoto": "📷 Toma una selfie creativa juntos en esta ubicación.",
+    "uploadPhoto": "📸 Subir Foto",
+    "uploadPhotoLabel": "Subir foto para {{title}}",
+    "uploadHelp": "Seleccione un archivo de imagen para subir como su foto para esta parada",
+    "processing": "Procesando subida de foto",
+    "processingText": "Procesando..."
+  },
+  "completion": {
+    "congratulations": "¡Felicitaciones! Has completado la búsqueda del tesoro.",
+    "congratulationsAnnouncement": "Todas las {{count}} paradas han sido completadas exitosamente. ¡Bien hecho!",
+    "celebrationIcon": "Celebración de fiesta"
+  },
+  "actions": {
+    "expand": "Expandir",
+    "collapse": "Colapsar",
+    "open": "Abrir",
+    "close": "Cerrar",
+    "copy": "Copiar",
+    "upload": "Subir"
+  },
+  "feedback": {
+    "linkCopied": "Enlace copiado al portapapeles ✨",
+    "linkCopyFailed": "Error al copiar enlace al portapapeles"
+  },
+  "language": {
+    "select": "Seleccionar Idioma",
+    "english": "English",
+    "spanish": "Español"
+  },
+  "accessibility": {
+    "settingsPanel": "{{action}} panel de configuración para cambiar ubicación e información del equipo",
+    "shareableLink": "Copiar enlace compartible al portapapeles",
+    "settingsActions": "Acciones del panel de configuración"
+  }
+}

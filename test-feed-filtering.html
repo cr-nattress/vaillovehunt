@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Feed Security Filtering Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { margin: 10px 0; padding: 15px; border-radius: 8px; }
+        .pass { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .warning { background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
+        .code { background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 10px; font-family: monospace; margin: 10px 0; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .url-example { font-family: monospace; color: #0066cc; }
+    </style>
+</head>
+<body>
+    <h1>🔒 Feed Security Filtering Verification</h1>
+    <p>This test verifies that the Feed only shows photos from teams that match the URL path parameters, ensuring data isolation between different locations, events, and teams.</p>
+    
+    <div class="test-result info">
+        <strong>🎯 Security Requirement:</strong><br>
+        The Feed should only display posts from teams in the same location/event as specified in the URL path, and should NOT display the current team's own posts.
+    </div>
+
+    <h2>🧪 Test Scenarios</h2>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>URL Path</th>
+                <th>Expected Filtering Behavior</th>
+                <th>Console Log Check</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="url-example">/bhhs/vail/red</span></td>
+                <td>
+                    ✅ Show: BHHS + Vail teams<br>
+                    ❌ Hide: "red" team posts<br>
+                    ❌ Hide: Other locations/events
+                </td>
+                <td>
+                    <div class="code">
+🔍 Feed: Loading posts with filters: {locationName: "BHHS", eventName: "vail", teamName: "red"}<br>
+🔍 Applied filters: X teams → Y teams<br>
+   📍 Location filter: BHHS<br>
+   🎯 Event filter: vail<br>
+   🚫 Excluding team: red
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td><span class="url-example">/bhhs/vail/blue</span></td>
+                <td>
+                    ✅ Show: BHHS + Vail teams<br>
+                    ❌ Hide: "blue" team posts<br>
+                    ❌ Hide: Other locations/events
+                </td>
+                <td>Similar filtering with "blue" excluded</td>
+            </tr>
+            <tr>
+                <td><span class="url-example">/denver/hunt/alpha</span></td>
+                <td>
+                    ✅ Show: Denver + Hunt teams<br>
+                    ❌ Hide: "alpha" team posts<br>
+                    ❌ Hide: BHHS/Vail teams
+                </td>
+                <td>Different location/event filtering</td>
+            </tr>
+            <tr>
+                <td><span class="url-example">/</span> (no path params)</td>
+                <td>
+                    ✅ Show: All teams<br>
+                    ⚠️ No filtering applied
+                </td>
+                <td>No filter parameters in console</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="test-result pass">
+        <strong>✅ Expected Implementation:</strong><br>
+        1. <strong>FeedService.getAllFeedPosts(filters)</strong> accepts filtering parameters<br>
+        2. <strong>Location filtering:</strong> team.locationName matches URL location<br>
+        3. <strong>Event filtering:</strong> team.eventName matches URL event<br>
+        4. <strong>Team exclusion:</strong> Current team's posts are excluded from feed<br>
+        5. <strong>Console logging:</strong> Shows applied filters for debugging
+    </div>
+
+    <h2>🔍 Manual Verification Steps</h2>
+    <ol>
+        <li><strong>Open DevTools Console</strong> to monitor filtering logs</li>
+        <li><strong>Navigate to different URL paths:</strong>
+            <ul>
+                <li><a href="http://localhost:5173/bhhs/vail/red#/feed" target="_blank">http://localhost:5173/bhhs/vail/red#/feed</a></li>
+                <li><a href="http://localhost:5173/bhhs/vail/blue#/feed" target="_blank">http://localhost:5173/bhhs/vail/blue#/feed</a></li>
+                <li><a href="http://localhost:5173/denver/hunt/alpha#/feed" target="_blank">http://localhost:5173/denver/hunt/alpha#/feed</a></li>
+            </ul>
+        </li>
+        <li><strong>Verify console logs</strong> show proper filtering being applied</li>
+        <li><strong>Check Feed content</strong> only shows appropriate teams</li>
+        <li><strong>Confirm current team exclusion</strong> (own posts not visible)</li>
+    </ol>
+
+    <div class="test-result warning">
+        <strong>⚠️ Data Isolation Critical:</strong><br>
+        Teams should NEVER see posts from other locations/events. This ensures privacy and prevents data leakage between different hunt instances or organizations.
+    </div>
+
+    <h2>🛡️ Security Benefits</h2>
+    <ul>
+        <li><strong>Location Isolation:</strong> BHHS teams can't see Denver team posts</li>
+        <li><strong>Event Isolation:</strong> "vail" event teams can't see "hunt" event posts</li>
+        <li><strong>Team Privacy:</strong> Teams don't see their own posts in the feed (prevents clutter)</li>
+        <li><strong>URL-based Security:</strong> Access control through URL path parameters</li>
+        <li><strong>No Cross-contamination:</strong> Multiple hunt instances can run simultaneously</li>
+    </ul>
+
+    <div class="test-result info">
+        <strong>📊 Implementation Details:</strong><br>
+        - URL path parsing: <code>getPathParams(window.location.pathname)</code><br>
+        - App store integration: <code>useAppStore()</code> provides <code>locationName</code>, <code>eventName</code>, <code>teamName</code><br>
+        - Service filtering: <code>FeedService.getAllFeedPosts(filters)</code><br>
+        - Reactive updates: Feed reloads when URL parameters change
+    </div>
+</body>
+</html>

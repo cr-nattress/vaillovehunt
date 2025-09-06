@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { memo, useMemo } from 'react'
 
 interface ProgressRingProps {
   number: number
@@ -7,15 +7,18 @@ interface ProgressRingProps {
   strokeWidth?: number
 }
 
-export default function ProgressRing({ 
+const ProgressRing = memo(function ProgressRing({ 
   number, 
   isCompleted, 
   size = 36, 
   strokeWidth = 3 
 }: ProgressRingProps) {
-  const radius = (size - strokeWidth) / 2
-  const circumference = radius * 2 * Math.PI
-  const center = size / 2
+  // Memoize calculations to prevent recalculation on every render
+  const { radius, circumference, center } = useMemo(() => ({
+    radius: (size - strokeWidth) / 2,
+    circumference: ((size - strokeWidth) / 2) * 2 * Math.PI,
+    center: size / 2
+  }), [size, strokeWidth])
 
   if (isCompleted) {
     // Mini achievement badge for completed stops
@@ -82,4 +85,6 @@ export default function ProgressRing({
       </div>
     </div>
   )
-}
+})
+
+export default ProgressRing

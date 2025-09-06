@@ -1,21 +1,26 @@
-import React, {useState, useEffect} from 'react'
+import React, {useState, useEffect, useMemo} from 'react'
 import { CollageService } from './client/CollageService'
 import { PhotoUploadService } from './client/PhotoUploadService'
+import { PhotoService } from './services/PhotoService'
 import { DualWriteService } from './client/DualWriteService'
 import ProgressGauge from './components/ProgressGauge'
 import AlbumViewer from './components/AlbumViewer'
 import Header from './features/app/Header'
 import SettingsPanel from './features/app/SettingsPanel'
 import StopsList from './features/app/StopsList'
+import FooterNav from './features/app/FooterNav'
 import { UploadProvider } from './features/upload/UploadContext'
 import { useAppStore } from './store/appStore'
 import { getPathParams, isValidParamSet, normalizeParams } from './utils/url'
 import { slugify } from './utils/slug'
-import { useProgress } from './hooks/useProgress'
 import { base64ToFile, compressImage } from './utils/image'
 import { buildStorybook } from './utils/canvas'
 import { generateGuid } from './utils/id'
 import { getRandomStops } from './utils/random'
+// Phase 3: Deprecated - no longer using hash router
+// import { useHashRouter } from './hooks/useHashRouter'
+import FeedPage from './features/feed/components/FeedPage'
+import EventPage from './features/event/EventPage'
 
 /**
  * Vail Love Hunt — React single-page app for a couples' scavenger/date experience in Vail.
@@ -28,13 +33,26 @@ import { getRandomStops } from './utils/random'
 
 export default function App() {
   // Use Zustand store for central state management
-  const { locationName, teamName, sessionId, eventName, setLocationName, setTeamName, setEventName, lockedByQuery, setLockedByQuery } = useAppStore()
+  const { 
+    locationName, teamName, sessionId, eventName, lockedByQuery,
+    progress, teamPhotos,
+    // Navigation state (Phase 2 - App Consumes Store)
+    currentPage, navigate, taskTab, setTaskTab,
+    setLocationName, setTeamName, setEventName, setLockedByQuery,
+    setProgress, updateStopProgress, resetProgress, 
+    saveTeamPhoto, getTeamPhotos, clearTeamPhotos, clearAllTeamData, switchTeam
+  } = useAppStore()
+  
+  // Phase 3: Deprecated - no longer using hash router
+  // const { currentPage: hashPage, navigateToPage: hashNavigateToPage } = useHashRouter()
   
   const [stops, setStops] = useState(() => getRandomStops(locationName || 'BHHS'))
   const [isEditMode, setIsEditMode] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   
-  const {progress, setProgress, completeCount, percent} = useProgress(stops)
+  // Calculate progress stats from Zustand state
+  const completeCount = useMemo(() => stops.reduce((acc, s) => acc + ((progress[s.id]?.done) ? 1 : 0), 0), [progress, stops])
+  const percent = stops.length === 0 ? 0 : Math.round((completeCount / stops.length) * 100)
   const [showTips, setShowTips] = useState(false)
   const [storybookUrl, setStorybookUrl] = useState(null)
   const [collageLoading, setCollageLoading] = useState(false)
@@ -44,6 +62,64 @@ export default function App() {
   const [transitioningStops, setTransitioningStops] = useState(new Set())
   const [uploadingStops, setUploadingStops] = useState(new Set())
   const [completedSectionExpanded, setCompletedSectionExpanded] = useState(false)
+  // Phase 2: activeTab replaced with store's taskTab
+  // const [activeTab, setActiveTab] = useState('current') // DEPRECATED
+
+  // Phase 3: Deprecated - hash-related functions no longer needed
+  // const getTabFromHash = () => { ... }
+  // const updateHashWithTab = (tab) => { ... }
+
+  // Phase 3: Set active tab using store only (no hash sync)
+  const setActiveTabWithHistory = (tab) => {
+    console.log(`🧭 Phase 3: Setting task tab via store only: ${tab}`)
+    setTaskTab(tab)
+  }
+
+  // Handle keyboard navigation for tabs
+  const handleTabKeyDown = (event) => {
+    const tabs = ['current', 'completed']
+    const currentIndex = tabs.indexOf(taskTab)
+    
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowRight':
+        event.preventDefault()
+        const direction = event.key === 'ArrowLeft' ? -1 : 1
+        const newIndex = (currentIndex + direction + tabs.length) % tabs.length
+        const newTab = tabs[newIndex]
+        setActiveTabWithHistory(newTab)
+        // Focus the newly selected tab
+        setTimeout(() => {
+          document.getElementById(`${newTab}-tab`)?.focus()
+        }, 0)
+        break
+        
+      case 'Home':
+        event.preventDefault()
+        setActiveTabWithHistory('current')
+        setTimeout(() => {
+          document.getElementById('current-tab')?.focus()
+        }, 0)
+        break
+        
+      case 'End':
+        event.preventDefault()
+        setActiveTabWithHistory('completed')
+        setTimeout(() => {
+          document.getElementById('completed-tab')?.focus()
+        }, 0)
+        break
+        
+      case 'Enter':
+      case ' ':
+        event.preventDefault()
+        // Tab is already focused, no need to change selection
+        break
+    }
+  }
+
+  // Phase 2: Deprecated - tab initialization now handled by store
+  // Old tab initialization effect removed - now using store initialization
 
   // Initialize session and load saved settings on app startup
   useEffect(() => {
@@ -126,6 +202,40 @@ export default function App() {
     console.log(`✅ Updated stops for ${locationName}:`, newStops.map(s => s.title));
   }, [locationName])
 
+  // Team switching effect - use Zustand switchTeam action
+  useEffect(() => {
+    if (!teamName || !locationName || !eventName) return;
+    
+    console.log(`🔄 TEAM SWITCH EFFECT: ${teamName}, location: ${locationName}, event: ${eventName}`);
+    
+    // Reset UI state on team change
+    setExpandedStops({});
+    setTransitioningStops(new Set());
+    setUploadingStops(new Set());
+    setCollageUrl(null);
+    setFullSizeImageUrl(null);
+    setStorybookUrl(null);
+    
+    // Load team photos into progress via Zustand
+    const teamPhotos = getTeamPhotos(locationName, eventName, teamName);
+    
+    const photoProgress = {};
+    teamPhotos.forEach(photo => {
+      photoProgress[photo.locationId] = {
+        done: true,
+        notes: '',
+        photo: photo.photoUrl,
+        completedAt: photo.uploadedAt,
+        revealedHints: 1
+      };
+    });
+    
+    console.log(`🔄 Loading ${teamPhotos.length} photos for team ${teamName}:`, photoProgress);
+    setProgress(photoProgress);
+    
+  }, [teamName, locationName, eventName, getTeamPhotos, setProgress])
+
+
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -140,47 +250,87 @@ export default function App() {
     }
   }, [isMenuOpen])
 
-  // Handle photo upload for a stop
+  // Phase 3 - Navigation completely decoupled from hash
+  // All hash-related initialization and sync effects removed
+
+  // Handle photo upload for a stop (using Zustand)
   const handlePhotoUpload = async (stopId, file) => {
+    console.log(`🔄 ZUSTAND UPLOAD START: stopId=${stopId}, team=${teamName}, location=${locationName}, event=${eventName}`)
+    
+    // Log current Zustand state
+    console.log(`📊 Current Zustand progress:`, progress)
+    console.log(`📊 Current Zustand teamPhotos:`, teamPhotos)
+    
     const stop = stops.find(s => s.id === stopId)
-    const state = progress[stopId] || { done: false, notes: '', photo: null, revealedHints: 1 }
+    const currentState = progress[stopId] || { done: false, notes: '', photo: null, revealedHints: 1 }
+    
+    console.log(`📊 Current progress state for ${stopId}:`, currentState)
     
     // Start loading state
     setUploadingStops(prev => new Set([...prev, stopId]))
     
     try {
-      // Check if photo already exists for this location (idempotency)
-      const existingPhoto = await PhotoUploadService.getExistingPhoto(stopId, sessionId)
+      // Check if photo already exists in Zustand store
+      const existingPhotos = getTeamPhotos(locationName, eventName, teamName)
+      const existingPhoto = existingPhotos.find(photo => photo.locationId === stopId)
+      
       if (existingPhoto) {
-        console.log(`📷 Photo already exists for ${stop.title}, using existing photo`)
-        setProgress(p => ({
-          ...p,
-          [stopId]: { ...state, photo: existingPhoto.photoUrl, done: true, completedAt: new Date().toISOString() }
-        }))
+        console.log(`📷 EXISTING PHOTO FOUND in Zustand:`, existingPhoto)
+        console.log(`🔄 Using existing photo URL: ${existingPhoto.photoUrl}`)
+        
+        updateStopProgress(stopId, {
+          ...currentState,
+          photo: existingPhoto.photoUrl,
+          done: true,
+          completedAt: new Date().toISOString()
+        })
       } else {
-        // Upload new photo using PhotoUploadService
+        console.log(`📷 NO EXISTING PHOTO - proceeding with upload`)
+        
+        // Upload to server/Cloudinary
         console.log(`📸 Uploading new photo for ${stop.title}`)
         const uploadResponse = await PhotoUploadService.uploadPhotoWithResize(
           file, 
           stop.title, 
           sessionId,
-          1600, // maxWidth (default)
-          0.8,  // quality (default) 
+          1600, // maxWidth
+          0.8,  // quality
           teamName,
           locationName,
           eventName
         )
         
-        // Save photo record
-        await PhotoUploadService.savePhotoRecord(uploadResponse, stopId, sessionId)
+        console.log(`💾 UPLOAD RESPONSE:`, uploadResponse)
         
-        // Step 1: Immediate feedback with photo URL
-        setProgress(p => ({
-          ...p,
-          [stopId]: { ...state, photo: uploadResponse.photoUrl, done: true, completedAt: new Date().toISOString() }
-        }))
+        // Create photo record
+        const photoRecord = {
+          ...uploadResponse,
+          locationId: stopId
+        }
         
-        console.log(`✅ Photo uploaded successfully for ${stop.title}: ${uploadResponse.photoUrl}`)
+        // Save to Zustand (replaces localStorage)
+        console.log(`💾 Saving photo record to Zustand...`)
+        saveTeamPhoto(locationName, eventName, teamName, photoRecord)
+        
+        // Also save to PhotoService API for feed access
+        console.log(`💾 Saving photo record to PhotoService API...`)
+        try {
+          await PhotoService.saveTeamPhoto(locationName, eventName, teamName, photoRecord)
+          console.log(`✅ Photo saved to API successfully`)
+        } catch (apiError) {
+          console.warn(`⚠️ Failed to save to API, but continuing:`, apiError)
+        }
+        
+        // Update progress state
+        console.log(`📊 Updating progress with photo URL: ${uploadResponse.photoUrl}`)
+        updateStopProgress(stopId, {
+          ...currentState,
+          photo: uploadResponse.photoUrl,
+          done: true,
+          completedAt: new Date().toISOString()
+        })
+        
+        console.log(`✅ Photo uploaded and saved to Zustand for ${stop.title}`)
       }
       
       // End loading state
@@ -319,14 +469,29 @@ export default function App() {
     setStorybookUrl(url)
   }
 
-  // Reset all progress and notes (clears local state AND re-saves to localStorage via effect)
-  const reset = () => {
-    setProgress({})
-    setCollageUrl(null)
-    setStorybookUrl(null)
-    setFullSizeImageUrl(null)
-    setExpandedStops({})
-    setTransitioningStops(new Set())
+  // Team-specific reset - only resets data for the current team
+  const reset = async () => {
+    try {
+      console.log(`🗑️ Resetting data for team: ${teamName || 'default'}`)
+      
+      // Reset progress data (team-specific)
+      resetProgress()
+      
+      // Clear team photos (shared among team members)
+      await PhotoUploadService.clearTeamPhotos(teamName, locationName, eventName)
+      
+      // Clear UI state (these are shared but will be regenerated)
+      setCollageUrl(null)
+      setStorybookUrl(null)
+      setFullSizeImageUrl(null)
+      setExpandedStops({})
+      setTransitioningStops(new Set())
+      
+      console.log(`✅ Successfully reset data for team: ${teamName || 'default'}`)
+      
+    } catch (error) {
+      console.error('❌ Failed to reset team data:', error)
+    }
   }
   
   // Toggle expanded state for a stop
@@ -383,7 +548,7 @@ export default function App() {
       sessionId={sessionId}
       eventName={eventName}
     >
-      <div className='min-h-screen text-slate-900' style={{backgroundColor: 'var(--color-cream)'}}>
+      <div className='min-h-screen text-slate-900 bg-gray-50'>
         
         <Header 
           isMenuOpen={isMenuOpen}
@@ -393,157 +558,20 @@ export default function App() {
           percent={percent}
           onReset={reset}
           onToggleTips={() => setShowTips(!showTips)}
+          onNavigate={navigate}
         />
 
         {/* Live region for screen reader announcements */}
         <div id="status-announcements" aria-live="polite" aria-atomic="true" className="sr-only"></div>
         
-        <main id="main-content" className='max-w-screen-sm mx-auto px-4 py-5' role="main" aria-label="Scavenger hunt main content">
-        <section className='border rounded-lg shadow-sm p-4 relative' style={{
-          backgroundColor: 'var(--color-white)',
-          borderColor: 'var(--color-light-grey)'
-        }} aria-labelledby="location-heading">
-          <div className='flex items-center gap-2'>
-            <h1 id="location-heading" className='text-xl font-semibold'>{locationName}</h1>
-            {!lockedByQuery && (
-              <button 
-                onClick={() => setIsEditMode(!isEditMode)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    setIsEditMode(!isEditMode)
-                  }
-                }}
-                className='p-2 rounded-full transition-all duration-150 hover:scale-110 active:scale-95 focus:ring-2 focus:ring-opacity-50'
-                style={{
-                  color: 'var(--color-warm-grey)',
-                  backgroundColor: 'transparent'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.color = 'var(--color-cabernet)'
-                  e.target.style.backgroundColor = 'var(--color-light-pink)'
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.color = 'var(--color-warm-grey)'
-                  e.target.style.backgroundColor = 'transparent'
-                }}
-                onFocus={(e) => {
-                  e.target.style.color = 'var(--color-cabernet)'
-                  e.target.style.backgroundColor = 'var(--color-light-pink)'
-                }}
-                onBlur={(e) => {
-                  e.target.style.color = 'var(--color-warm-grey)'
-                  e.target.style.backgroundColor = 'transparent'
-                }}
-                aria-label={`${isEditMode ? 'Close' : 'Open'} settings panel to change location and team information`}
-                aria-expanded={isEditMode}
-                aria-controls="settings-panel"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
-            )}
-            {/* Language Switcher */}
-            
-            {/* Copy Link button */}
-            <button
-              onClick={async () => {
-                try {
-                  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-                  const loc = slugify(locationName || '')
-                  const evt = slugify(eventName || '')
-                  const team = slugify(teamName || '')
-                  const path = `/${loc}/${evt}/${team}`
-                  const url = `${origin}${path}`
-                  await navigator.clipboard.writeText(url)
-                  console.log('Link copied to clipboard ✨')
-                } catch (err) {
-                  console.warn('Failed to copy link', err)
-                  console.error('Failed to copy link to clipboard')
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  e.target.click()
-                }
-              }}
-              className='p-2 rounded-full transition-all duration-150 hover:scale-110 active:scale-95 focus:ring-2 focus:ring-opacity-50'
-              style={{
-                color: 'var(--color-warm-grey)',
-                backgroundColor: 'transparent'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.color = 'var(--color-cabernet)'
-                e.target.style.backgroundColor = 'var(--color-light-pink)'
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.color = 'var(--color-warm-grey)'
-                e.target.style.backgroundColor = 'transparent'
-              }}
-              onFocus={(e) => {
-                e.target.style.color = 'var(--color-cabernet)'
-                e.target.style.backgroundColor = 'var(--color-light-pink)'
-              }}
-              onBlur={(e) => {
-                e.target.style.color = 'var(--color-warm-grey)'
-                e.target.style.backgroundColor = 'transparent'
-              }}
-              aria-label='Copy shareable link to clipboard'
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 010 5.656l-2 2a4 4 0 11-5.656-5.656l1-1" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.172 13.828a4 4 0 010-5.656l2-2a4 4 0 115.656 5.656l-1 1" />
-              </svg>
-            </button>
-          </div>
-          
-          {isEditMode ? (
-            <SettingsPanel
-              locationName={locationName}
-              teamName={teamName}
-              eventName={eventName}
-              onChangeLocation={setLocationName}
-              onChangeTeam={setTeamName}
-              onChangeEvent={setEventName}
-              onSave={handleSaveSettings}
-              onCancel={() => setIsEditMode(false)}
-            />
-          ) : (
-            /* Normal Mode Card */
-            <>
-              {teamName && (
-                <p className='text-blue-600 text-sm font-medium mt-2'>Team: {teamName}</p>
-              )}
-              
-              {percent === 100 ? (
-                <div className='mt-2' role="alert" aria-live="assertive">
-                  <p className='text-lg font-semibold' style={{color: 'var(--color-cabernet)'}}>
-                    <span role="img" aria-label="Party celebration">🎉</span> 
-                    Congratulations! You completed the scavenger hunt.
-                  </p>
-                  <p className="sr-only">
-                    All {completeCount} stops have been completed successfully. Well done!
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {/* Enhanced Progress Gauge */}
-                  <ProgressGauge 
-                    percent={percent}
-                    completeCount={completeCount}
-                    totalStops={stops.length}
-                    stops={stops}
-                    progress={progress}
-                  />
-                  
-                </>
-              )}
-            </>
-          )}
-        </section>
+        {/* Conditional page rendering based on store navigation */}
+        <>
+        {currentPage === 'hunt' && (
+        <div>
+        <main id="main-content" className='max-w-screen-sm mx-auto px-4 py-5' 
+              role="main" 
+              aria-label="Scavenger hunt main content"
+              style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}>
 
         {/* Album Viewer Component */}
         <AlbumViewer 
@@ -552,7 +580,66 @@ export default function App() {
           initialExpanded={true}
         />
 
-        <StopsList
+        {/* Top Tabs for Current vs Completed */}
+        <div className='max-w-screen-sm mx-auto px-4 mt-6'>
+          <div 
+            role="tablist" 
+            aria-label="Switch between current tasks and completed tasks"
+            className='flex border-b'
+            style={{ borderColor: 'var(--color-light-grey)' }}
+          >
+            <button
+              role="tab"
+              aria-selected={taskTab === 'current'}
+              aria-controls="current-tabpanel"
+              id="current-tab"
+              tabIndex={taskTab === 'current' ? 0 : -1}
+              className={`flex-1 px-4 py-4 text-center font-medium border-b-2 transition-all duration-200 ${
+                taskTab === 'current' 
+                  ? 'border-current font-semibold' 
+                  : 'border-transparent hover:border-gray-300'
+              }`}
+              style={{
+                color: taskTab === 'current' ? 'var(--color-cabernet)' : 'var(--color-medium-grey)',
+                borderBottomColor: taskTab === 'current' ? 'var(--color-cabernet)' : 'transparent'
+              }}
+              onClick={() => setActiveTabWithHistory('current')}
+              onKeyDown={handleTabKeyDown}
+            >
+              Current Tasks
+            </button>
+            <button
+              role="tab"
+              aria-selected={taskTab === 'completed'}
+              aria-controls="completed-tabpanel"
+              id="completed-tab"
+              tabIndex={taskTab === 'completed' ? 0 : -1}
+              className={`flex-1 px-4 py-4 text-center font-medium border-b-2 transition-all duration-200 ${
+                taskTab === 'completed' 
+                  ? 'border-current font-semibold' 
+                  : 'border-transparent hover:border-gray-300'
+              }`}
+              style={{
+                color: taskTab === 'completed' ? 'var(--color-cabernet)' : 'var(--color-medium-grey)',
+                borderBottomColor: taskTab === 'completed' ? 'var(--color-cabernet)' : 'transparent'
+              }}
+              onClick={() => setActiveTabWithHistory('completed')}
+              onKeyDown={handleTabKeyDown}
+            >
+              Completed ({stops.filter(stop => progress[stop.id]?.done && !transitioningStops.has(stop.id)).length})
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Panels */}
+        <div
+          role="tabpanel"
+          id="current-tabpanel"
+          aria-labelledby="current-tab"
+          hidden={taskTab !== 'current'}
+          className="max-w-screen-sm mx-auto px-4 mt-6 space-y-4"
+        >
+          <StopsList
           stops={stops}
           progress={progress}
           transitioningStops={transitioningStops}
@@ -563,7 +650,32 @@ export default function App() {
           uploadingStops={uploadingStops}
           onPhotoUpload={handlePhotoUpload}
           setProgress={setProgress}
+          view="current"
         />
+        </div>
+
+        {/* Completed Tab Panel */}
+        <div
+          role="tabpanel"
+          id="completed-tabpanel"
+          aria-labelledby="completed-tab"
+          hidden={taskTab !== 'completed'}
+          className="max-w-screen-sm mx-auto px-4 mt-6 space-y-4"
+        >
+          <StopsList
+            stops={stops}
+            progress={progress}
+            transitioningStops={transitioningStops}
+            completedSectionExpanded={completedSectionExpanded}
+            onToggleCompletedSection={() => setCompletedSectionExpanded(!completedSectionExpanded)}
+            expandedStops={expandedStops}
+            onToggleExpanded={toggleExpanded}
+            uploadingStops={uploadingStops}
+            onPhotoUpload={handlePhotoUpload}
+            setProgress={setProgress}
+            view="completed"
+          />
+        </div>
 
 
         {showTips && (
@@ -616,6 +728,45 @@ export default function App() {
         )}
 
       </main>
+        
+        {/* Mobile Footer Navigation */}
+        <FooterNav 
+          activePage="challenges"
+          onEventClick={() => {
+            // Navigate to event page
+            navigate('event')
+          }}
+          onChallengesClick={() => {
+            // Navigate to hunt/challenges page
+            navigate('hunt')
+          }}
+          onSocialClick={() => {
+            // Navigate to social/feed page
+            navigate('feed')
+          }}
+        />
+        </div>
+        )}
+        
+        {/* Feed Page */}
+        {currentPage === 'feed' && (
+          <FeedPage onNavigate={navigate} />
+        )}
+
+        {/* Event Page */}
+        {currentPage === 'event' && (
+          <EventPage 
+            onNavigate={navigate}
+            completeCount={completeCount}
+            totalStops={stops.length}
+            percent={percent}
+            stops={stops}
+            progress={progress}
+            onSaveSettings={handleSaveSettings}
+          />
+        )}
+        </>
+        
       </div>
     </UploadProvider>
   )

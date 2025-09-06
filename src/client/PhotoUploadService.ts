@@ -121,21 +121,29 @@ export class PhotoUploadService {
   }
   
   /**
-   * Check if a location already has a photo uploaded for the session
+   * Check if a location already has a photo uploaded by the team
    * @param locationId The location ID to check
-   * @param sessionId The current session ID
+   * @param teamName The team name
+   * @param locationName The location name (for namespace)
+   * @param eventName The event name (for namespace)
    * @returns Promise resolving to existing photo record or null
    */
   static async getExistingPhoto(
     locationId: string, 
-    sessionId: string
+    teamName: string,
+    locationName?: string,
+    eventName?: string
   ): Promise<PhotoRecord | null> {
     try {
-      // Get session photos from storage
-      const sessionPhotos = await this.getSessionPhotos(sessionId);
+      console.log(`🔍 GET EXISTING PHOTO: locationId=${locationId}, team=${teamName}, location=${locationName}, event=${eventName}`)
+      
+      // Get team photos from storage
+      const teamPhotos = await this.getTeamPhotos(teamName, locationName, eventName);
+      console.log(`📊 Retrieved ${teamPhotos.length} team photos:`, teamPhotos)
       
       // Find photo for this location
-      const existingPhoto = sessionPhotos.find(photo => photo.locationId === locationId);
+      const existingPhoto = teamPhotos.find(photo => photo.locationId === locationId);
+      console.log(`🔍 Found existing photo for ${locationId}:`, existingPhoto)
       
       return existingPhoto || null;
       
@@ -146,51 +154,170 @@ export class PhotoUploadService {
   }
   
   /**
-   * Save photo record to session storage
+   * Save photo record to team storage (shared among team members)
    * @param photoResponse The photo upload response
    * @param locationId The location ID
-   * @param sessionId The current session ID
+   * @param teamName The team name
+   * @param locationName The location name (for namespace)
+   * @param eventName The event name (for namespace)
    */
   static async savePhotoRecord(
     photoResponse: PhotoUploadResponse,
     locationId: string,
-    sessionId: string
+    teamName: string,
+    locationName?: string,
+    eventName?: string
   ): Promise<void> {
     try {
+      console.log(`🔄 SAVE PHOTO RECORD: locationId=${locationId}, team=${teamName}, location=${locationName}, event=${eventName}`)
+      
       const photoRecord: PhotoRecord = {
         ...photoResponse,
         locationId
       };
+      console.log(`📸 Photo record created:`, photoRecord)
       
-      // Get existing session photos
-      const sessionPhotos = await this.getSessionPhotos(sessionId);
+      // Get existing team photos
+      console.log(`🔍 Getting existing team photos...`)
+      const teamPhotos = await this.getTeamPhotos(teamName, locationName, eventName);
+      console.log(`📊 Found ${teamPhotos.length} existing photos:`, teamPhotos)
       
       // Remove any existing photo for this location (replace)
-      const updatedPhotos = sessionPhotos.filter(photo => photo.locationId !== locationId);
+      const existingCount = teamPhotos.length;
+      const updatedPhotos = teamPhotos.filter(photo => photo.locationId !== locationId);
+      const removedCount = existingCount - updatedPhotos.length;
+      console.log(`🗑️ Removed ${removedCount} existing photos for location ${locationId}`)
+      
       updatedPhotos.push(photoRecord);
+      console.log(`➕ Added new photo record. Total photos: ${updatedPhotos.length}`)
+      console.log(`📋 Final photos array:`, updatedPhotos)
       
-      // Save back to storage
-      await this.saveSessionPhotos(sessionId, updatedPhotos);
+      // Save back to team storage
+      console.log(`💾 Saving to team storage...`)
+      await this.saveTeamPhotos(teamName, updatedPhotos, locationName, eventName);
       
-      console.log(`✅ Photo record saved for location ${locationId}`);
+      console.log(`✅ Photo record saved for location ${locationId} (team: ${teamName})`);
       
     } catch (error) {
-      console.error('Failed to save photo record:', error);
+      console.error('💥 Failed to save photo record:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save photos for a team (shared among team members)
+   * @param teamName The team name
+   * @param photos Array of photo records
+   * @param locationName The location name (for namespace)
+   * @param eventName The event name (for namespace)
+   */
+  private static async saveTeamPhotos(
+    teamName: string,
+    photos: PhotoRecord[],
+    locationName?: string,
+    eventName?: string
+  ): Promise<void> {
+    try {
+      // Create team-specific key
+      const namespaced = locationName && eventName 
+        ? `${locationName}-${eventName}-${teamName}`
+        : teamName;
+      const key = `team-photos:${namespaced}`;
+      
+      console.log(`🔑 SAVE TEAM PHOTOS: key=${key}`)
+      console.log(`📊 Saving ${photos.length} photos:`, photos)
+      
+      localStorage.setItem(key, JSON.stringify(photos));
+      
+      // Verify save
+      const saved = localStorage.getItem(key);
+      const parsedSaved = saved ? JSON.parse(saved) : null;
+      console.log(`✅ Verification: ${parsedSaved?.length || 0} photos saved to localStorage`)
+      
+    } catch (error) {
+      console.error('💥 Failed to save team photos:', error);
       throw error;
     }
   }
   
   /**
-   * Get all photos for a session
-   * @param sessionId The session ID
+   * Get all photos for a team
+   * @param teamName The team name
+   * @param locationName The location name (for namespace)
+   * @param eventName The event name (for namespace)
    * @returns Promise resolving to array of photo records
    */
-  static async getSessionPhotos(sessionId: string): Promise<PhotoRecord[]> {
+  static async getTeamPhotos(teamName: string, locationName?: string, eventName?: string): Promise<PhotoRecord[]> {
     try {
-      const key = `session-photos:${sessionId}`;
+      // Create team-specific key
+      const namespaced = locationName && eventName 
+        ? `${locationName}-${eventName}-${teamName}`
+        : teamName;
+      const key = `team-photos:${namespaced}`;
+      
+      console.log(`🔑 GET TEAM PHOTOS: key=${key}`)
+      console.log(`🔑 Team parameters: teamName=${teamName}, locationName=${locationName}, eventName=${eventName}`)
+      
+      const stored = localStorage.getItem(key);
+      console.log(`🗄️ Raw stored data:`, stored ? `${stored.length} chars` : 'null')
+      
+      // Debug: Show all team-photos keys in localStorage to verify isolation
+      console.log(`🔍 All team-photos keys in localStorage:`)
+      for (let i = 0; i < localStorage.length; i++) {
+        const debugKey = localStorage.key(i)
+        if (debugKey && debugKey.startsWith('team-photos:')) {
+          const debugValue = localStorage.getItem(debugKey)
+          const debugParsed = debugValue ? JSON.parse(debugValue) : []
+          console.log(`  ${debugKey}: ${debugParsed.length} photos`)
+        }
+      }
+      
+      if (!stored) {
+        console.log(`📭 No photos found for team ${teamName}`)
+        return [];
+      }
+      
+      const parsed = JSON.parse(stored);
+      console.log(`📊 Parsed ${parsed.length} photos:`, parsed)
+      
+      // Log each photo's details
+      parsed.forEach((photo: PhotoRecord, index: number) => {
+        console.log(`  Photo ${index + 1}: locationId=${photo.locationId}, url=${photo.photoUrl}`)
+      })
+      
+      return parsed;
+      
+    } catch (error) {
+      console.error('💥 Failed to get team photos:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get all photos for a session (optionally team-specific)
+   * @param sessionId The session ID
+   * @param teamName The team name (optional, for team-specific storage)
+   * @returns Promise resolving to array of photo records
+   */
+  static async getSessionPhotos(sessionId: string, teamName?: string): Promise<PhotoRecord[]> {
+    try {
+      // Use team-specific key if teamName is provided
+      const key = teamName 
+        ? `session-photos:${sessionId}:${teamName}` 
+        : `session-photos:${sessionId}`;
       const stored = localStorage.getItem(key);
       
       if (!stored) {
+        // If team-specific data doesn't exist, start fresh to avoid team contamination
+        if (teamName) {
+          const oldKey = `session-photos:${sessionId}`;
+          const oldStored = localStorage.getItem(oldKey);
+          if (oldStored) {
+            console.log(`🗑️ Found old photo data at ${oldKey} - clearing to prevent team contamination`);
+            // Remove old data to prevent contamination
+            localStorage.removeItem(oldKey);
+          }
+        }
         return [];
       }
       
@@ -203,20 +330,46 @@ export class PhotoUploadService {
   }
   
   /**
-   * Save photos for a session
+   * Save photos for a session (optionally team-specific)
    * @param sessionId The session ID
    * @param photos Array of photo records
+   * @param teamName The team name (optional, for team-specific storage)
    */
   private static async saveSessionPhotos(
     sessionId: string, 
-    photos: PhotoRecord[]
+    photos: PhotoRecord[],
+    teamName?: string
   ): Promise<void> {
     try {
-      const key = `session-photos:${sessionId}`;
+      // Use team-specific key if teamName is provided
+      const key = teamName 
+        ? `session-photos:${sessionId}:${teamName}` 
+        : `session-photos:${sessionId}`;
       localStorage.setItem(key, JSON.stringify(photos));
       
     } catch (error) {
       console.error('Failed to save session photos:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear all photos for a specific team
+   * @param teamName The team name
+   * @param locationName The location name (for namespace)
+   * @param eventName The event name (for namespace)
+   */
+  static async clearTeamPhotos(teamName: string, locationName?: string, eventName?: string): Promise<void> {
+    try {
+      // Create team-specific key
+      const namespaced = locationName && eventName 
+        ? `${locationName}-${eventName}-${teamName}`
+        : teamName;
+      const key = `team-photos:${namespaced}`;
+      localStorage.removeItem(key);
+      console.log(`🗑️ Cleared photos for team: ${teamName}`);
+    } catch (error) {
+      console.error('Failed to clear team photos:', error);
       throw error;
     }
   }
@@ -270,18 +423,4 @@ export class PhotoUploadService {
     });
   }
   
-  /**
-   * Clear all photos for a session
-   * @param sessionId The session ID
-   */
-  static async clearSessionPhotos(sessionId: string): Promise<void> {
-    try {
-      const key = `session-photos:${sessionId}`;
-      localStorage.removeItem(key);
-      console.log(`🗑️ Cleared photos for session ${sessionId}`);
-      
-    } catch (error) {
-      console.error('Failed to clear session photos:', error);
-    }
-  }
 }

@@ -58,7 +58,7 @@ class ApiClient {
     }
 
     // In development, use local Express server
-    const devUrl = 'http://localhost:3001/api'
+    const devUrl = 'http://localhost:3002/api'
     console.log('🌐 Development mode, using local server:', devUrl)
     return devUrl
   }

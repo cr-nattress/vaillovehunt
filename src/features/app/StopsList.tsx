@@ -13,6 +13,7 @@ interface StopsListProps {
   uploadingStops: Set<string>
   onPhotoUpload: (stopId: string, file: File) => Promise<void>
   setProgress: (updateFn: any) => void
+  view?: 'current' | 'completed'
 }
 
 export default function StopsList({
@@ -25,7 +26,8 @@ export default function StopsList({
   onToggleExpanded,
   uploadingStops,
   onPhotoUpload,
-  setProgress
+  setProgress,
+  view = 'current'
 }: StopsListProps) {
   // Get completed stops sorted by completion timestamp (earliest first)
   const completedStops = stops
@@ -39,7 +41,7 @@ export default function StopsList({
   const completedCount = completedStops.length
   
   // Create a completion order lookup
-  const completionOrder = {}
+  const completionOrder: Record<string, number> = {}
   completedStops.forEach((stop, index) => {
     completionOrder[stop.id] = index + 1
   })
@@ -75,7 +77,7 @@ export default function StopsList({
     .filter(stop => transitioningStops.has(stop.id))
   
   // Show transitioning and first incomplete stop
-  const activeStops = []
+  const activeStops: any[] = []
   activeStops.push(...transitioningStopsArray)
   if (firstIncomplete) {
     activeStops.push(firstIncomplete)
@@ -92,6 +94,21 @@ export default function StopsList({
     }
   }
 
+  // Handle different view modes
+  if (view === 'completed') {
+    return (
+      <CompletedAccordion
+        completedStops={completedStops}
+        expandedStops={expandedStops}
+        progress={progress}
+        onToggleExpanded={onToggleExpanded}
+        completedSectionExpanded={true} // Auto-expand when in completed view
+        onToggleCompletedSection={onToggleCompletedSection}
+      />
+    )
+  }
+
+  // Default view is 'current' - show active tasks only
   return (
     <>
       {/* Render active stops (current task) */}
@@ -109,16 +126,6 @@ export default function StopsList({
           index={i}
         />
       ))}
-      
-      {/* Render completed stops in accordion */}
-      <CompletedAccordion
-        completedStops={completedStops}
-        expandedStops={expandedStops}
-        progress={progress}
-        onToggleExpanded={onToggleExpanded}
-        completedSectionExpanded={completedSectionExpanded}
-        onToggleCompletedSection={onToggleCompletedSection}
-      />
     </>
   )
 }

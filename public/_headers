@@ -1,0 +1,61 @@
+# Netlify Security Headers Configuration
+
+/*
+  # Security Headers
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  
+  # Content Security Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; img-src 'self' data: https://res.cloudinary.com https://*.cloudinary.com blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.cloudinary.com https://*.netlify.app; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests;
+  
+  # Permissions Policy (Feature Policy)
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(self), notifications=(self), push=(self), sync-xhr=(), magnetometer=(), gyroscope=(), speaker=(self), vibrate=(self), fullscreen=(self)
+  
+  # HSTS (HTTP Strict Transport Security)
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  
+  # Cache Control for Security
+  Cache-Control: public, max-age=31536000, immutable
+  
+  # Additional Security Headers
+  X-DNS-Prefetch-Control: off
+  X-Download-Options: noopen
+  X-Permitted-Cross-Domain-Policies: none
+
+# Service Worker specific headers
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Service-Worker-Allowed: /
+
+# API endpoints security
+/api/*
+  Cache-Control: no-cache, no-store, must-revalidate, private
+  X-Robots-Tag: noindex, nofollow
+
+/.netlify/functions/*
+  Cache-Control: no-cache, no-store, must-revalidate, private
+  X-Robots-Tag: noindex, nofollow
+
+# Static assets with long cache
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Images with cache
+/images/*
+  Cache-Control: public, max-age=2592000
+
+# Favicon and manifest
+/favicon.*
+  Cache-Control: public, max-age=2592000
+
+/manifest.json
+  Cache-Control: public, max-age=86400
+
+# Font files
+*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+  
+*.woff
+  Cache-Control: public, max-age=31536000, immutable

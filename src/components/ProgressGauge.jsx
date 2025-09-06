@@ -13,14 +13,17 @@ import React from 'react';
  */
 const ProgressGauge = ({ percent, completeCount, totalStops, stops, progress }) => {
   return (
-    <div className='mt-4'>
+    <div className='mt-4' role="region" aria-labelledby="progress-heading">
+      <h2 id="progress-heading" className="sr-only">Scavenger Hunt Progress</h2>
+      
       <div className='flex items-center justify-between mb-2'>
         <span className='text-xs font-medium uppercase tracking-wider' style={{ color: 'var(--color-medium-grey)' }}>Progress</span>
-        <span className='text-sm font-bold' style={{ color: 'var(--color-cabernet)' }}>
+        <span className='text-sm font-bold' style={{ color: 'var(--color-cabernet)' }} aria-live="polite">
           {percent}% Complete
         </span>
       </div>
-      <div className='relative'>
+      
+      <div className='relative' role="progressbar" aria-valuenow={percent} aria-valuemin="0" aria-valuemax="100" aria-label={`Progress: ${completeCount} of ${totalStops} stops completed, ${percent} percent`}>
         {/* Background track */}
         <div className='overflow-hidden h-3 rounded-full shadow-inner' style={{ backgroundColor: 'var(--color-light-grey)' }}>
           <div 
@@ -32,15 +35,17 @@ const ProgressGauge = ({ percent, completeCount, totalStops, stops, progress }) 
           </div>
         </div>
         {/* Progress dots */}
-        <div className='absolute top-0 left-0 w-full h-3 flex items-center justify-between px-1'>
-          {stops.map((stop) => (
+        <div className='absolute top-0 left-0 w-full h-3 flex items-center justify-between px-1' aria-hidden="true">
+          {stops.map((stop, index) => (
             <div 
               key={stop.id}
               className={`w-2 h-2 rounded-full transition-all duration-500 ${
                 progress[stop.id]?.done 
                   ? 'bg-white shadow-sm scale-110' 
-                  : 'scale-75' }} style={{ backgroundColor: progress[stop.id]?.done ? 'white' : 'var(--color-warm-grey)'
+                  : 'scale-75'
               }`}
+              style={{ backgroundColor: progress[stop.id]?.done ? 'white' : 'var(--color-warm-grey)' }}
+              title={`Stop ${index + 1}: ${progress[stop.id]?.done ? 'Completed' : 'Not completed'}`}
             />
           ))}
         </div>

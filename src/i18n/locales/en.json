@@ -1,0 +1,73 @@
+{
+  "app": {
+    "title": "Vail Scavenger Hunt",
+    "description": "An interactive couples' date experience exploring romantic locations in Vail"
+  },
+  "navigation": {
+    "skipToMain": "Skip to main content",
+    "settings": "Settings",
+    "copyLink": "Copy Link"
+  },
+  "settings": {
+    "heading": "Edit Settings",
+    "description": "Configure your organization, event, and team information for this scavenger hunt.",
+    "organization": "Organization",
+    "organizationHelp": "Organization selection is currently disabled",
+    "event": "Event",
+    "eventHelp": "Enter the name of your event or occasion",
+    "eventPlaceholder": "Enter event name",
+    "team": "Team",
+    "teamHelp": "Enter your team or couple name",
+    "teamPlaceholder": "Enter your team name",
+    "saveChanges": "Save Changes",
+    "saveHelp": "Save your organization, event, and team settings",
+    "cancel": "Cancel",
+    "cancelHelp": "Cancel editing and close settings panel"
+  },
+  "progress": {
+    "heading": "Scavenger Hunt Progress",
+    "label": "Progress",
+    "complete": "{{percent}}% Complete",
+    "stopsCount": "{{completed}} of {{total}} stops",
+    "progressDescription": "Progress: {{completed}} of {{total}} stops completed, {{percent}} percent"
+  },
+  "stops": {
+    "expandCompleted": "{{action}} completed stop: {{title}}",
+    "revealHint": "Reveal hint {{current}} of {{total}} for {{title}}",
+    "photoComplete": "✅ Photo Complete",
+    "yourPhoto": "✨ Your photo",
+    "capturePhoto": "📷 Capture a creative selfie together at this location.",
+    "uploadPhoto": "📸 Upload Photo",
+    "uploadPhotoLabel": "Upload photo for {{title}}",
+    "uploadHelp": "Select an image file to upload as your photo for this stop",
+    "processing": "Processing photo upload",
+    "processingText": "Processing..."
+  },
+  "completion": {
+    "congratulations": "Congratulations! You completed the scavenger hunt.",
+    "congratulationsAnnouncement": "All {{count}} stops have been completed successfully. Well done!",
+    "celebrationIcon": "Party celebration"
+  },
+  "actions": {
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "open": "Open",
+    "close": "Close",
+    "copy": "Copy",
+    "upload": "Upload"
+  },
+  "feedback": {
+    "linkCopied": "Link copied to clipboard ✨",
+    "linkCopyFailed": "Failed to copy link to clipboard"
+  },
+  "language": {
+    "select": "Select Language",
+    "english": "English",
+    "spanish": "Español"
+  },
+  "accessibility": {
+    "settingsPanel": "{{action}} settings panel to change location and team information",
+    "shareableLink": "Copy shareable link to clipboard",
+    "settingsActions": "Settings panel actions"
+  }
+}

@@ -47,12 +47,17 @@ const StopCard = memo(function StopCard({
   index
 }: StopCardProps) {
   // Memoize expensive calculations
-  const state = useMemo(() => 
-    progress[stop.id] || { done: false, notes: '', photo: null, revealedHints: 1 }, 
-    [progress, stop.id]
-  )
+  const state = useMemo(() => {
+    const progressState = progress[stop.id] || { done: false, notes: '', photo: null, revealedHints: 1 }
+    console.log(`🎯 STOPCARD RENDER: stopId=${stop.id}, photo=${progressState.photo ? progressState.photo.split('/').pop() : 'none'}, done=${progressState.done}`)
+    return progressState
+  }, [progress, stop.id])
   
-  const displayImage = useMemo(() => state.photo || PLACEHOLDER, [state.photo])
+  const displayImage = useMemo(() => {
+    const image = state.photo || PLACEHOLDER
+    console.log(`🖼️ STOPCARD IMAGE: stopId=${stop.id}, using=${image === PLACEHOLDER ? 'placeholder' : 'photo: ' + image.split('/').pop()}`)
+    return image
+  }, [state.photo, stop.id])
   const isTransitioning = useMemo(() => transitioningStops.has(stop.id), [transitioningStops, stop.id])
   const isUploading = useMemo(() => uploadingStops.has(stop.id), [uploadingStops, stop.id])
 

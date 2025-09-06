@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Phase 1 Navigation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .pass { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        button { margin: 5px; padding: 10px 15px; }
+    </style>
+</head>
+<body>
+    <h1>Phase 1 Hash Routing Test</h1>
+    <p>This test verifies that hash-based routing is working correctly.</p>
+    
+    <div>
+        <h3>Manual Tests:</h3>
+        <ol>
+            <li>Visit <a href="http://localhost:5173/" target="_blank">http://localhost:5173/</a> - should show Hunt page</li>
+            <li>Visit <a href="http://localhost:5173/#/hunt" target="_blank">http://localhost:5173/#/hunt</a> - should show Hunt page</li>
+            <li>Visit <a href="http://localhost:5173/#/feed" target="_blank">http://localhost:5173/#/feed</a> - should show Feed placeholder</li>
+            <li>On the Hunt page, open hamburger menu and check if navigation works</li>
+            <li>Use browser back/forward buttons to test navigation persistence</li>
+        </ol>
+    </div>
+
+    <div class="test-result pass">
+        <strong>✅ Expected Behavior:</strong><br>
+        - Default URL should show Hunt page with scavenger hunt content<br>
+        - #/hunt URL should show Hunt page<br>
+        - #/feed URL should show Feed placeholder with "coming soon" message<br>
+        - Navigation should update URL hash<br>
+        - Browser back/forward should work<br>
+        - All existing hunt functionality should work normally
+    </div>
+    
+    <div class="test-result info">
+        <strong>📋 Test Checklist:</strong><br>
+        □ Hunt page loads at default URL<br>
+        □ Hunt page loads at #/hunt URL<br>
+        □ Feed placeholder loads at #/feed URL<br>
+        □ Hash changes when navigating<br>
+        □ Browser navigation works<br>
+        □ Existing features still work (settings, photo upload, progress tracking)
+    </div>
+</body>
+</html>

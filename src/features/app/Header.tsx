@@ -1,4 +1,5 @@
 import React from 'react'
+import { PageType } from '../../store/appStore'
 
 interface HeaderProps {
   isMenuOpen: boolean
@@ -8,6 +9,7 @@ interface HeaderProps {
   percent: number
   onReset: () => void
   onToggleTips: () => void
+  onNavigate: (page: PageType) => void
 }
 
 export default function Header({ 
@@ -17,7 +19,8 @@ export default function Header({
   totalStops, 
   percent, 
   onReset, 
-  onToggleTips 
+  onToggleTips,
+  onNavigate
 }: HeaderProps) {
   return (
     <header className='sticky top-0 z-20 backdrop-blur-md border-b' style={{
@@ -25,7 +28,17 @@ export default function Header({
       borderBottomColor: 'var(--color-blush-pink)'
     }}>
       <div className='max-w-screen-sm mx-auto px-4 py-4 flex items-center justify-between'>
-        <div className='flex items-center'>
+        <div className='flex items-center gap-4'>
+          {/* Progress Mini-Indicator */}
+          <div className='flex items-center gap-2'>
+            <div className='w-8 h-8 rounded-full border-2 border-white/30 flex items-center justify-center'>
+              <span className='text-xs font-bold text-white'>{completeCount}</span>
+            </div>
+            <div className='text-xs text-white/90 hidden sm:block'>
+              {percent}% Complete
+            </div>
+          </div>
+          
           {/* Official Berkshire Hathaway HomeServices Logo */}
           <svg width="280" height="40" viewBox="0 0 280 40" className='text-white'>
             {/* House icon/symbol */}
@@ -48,7 +61,7 @@ export default function Header({
         {/* Hamburger Menu Button */}
         <button
           onClick={onToggleMenu}
-          className='relative p-2 rounded-lg transition-colors'
+          className='relative p-3 rounded-lg transition-colors'
           style={{
             backgroundColor: 'rgba(255, 255, 255, 0.1)',
           }}
@@ -91,7 +104,7 @@ export default function Header({
                   onToggleTips()
                   onToggleMenu()
                 }}
-                className='w-full text-left px-4 py-3 rounded-lg transition-all duration-150 transform hover:scale-[1.01] active:scale-[0.99] flex items-center gap-3 opacity-0'
+                className='w-full text-left px-4 py-4 rounded-lg transition-all duration-150 transform hover:scale-[1.01] active:scale-[0.99] flex items-center gap-3 opacity-0'
                 onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = 'var(--color-light-pink)'}
                 onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
                 onMouseDown={(e) => (e.target as HTMLElement).style.backgroundColor = 'var(--color-blush-pink)'}
@@ -111,13 +124,13 @@ export default function Header({
                   onReset()
                   onToggleMenu()
                 }}
-                className='w-full text-left px-4 py-3 rounded-lg transition-all duration-150 transform hover:scale-[1.01] active:scale-[0.99] flex items-center gap-3 opacity-0'
+                className='w-full text-left px-4 py-4 rounded-lg transition-all duration-150 transform hover:scale-[1.01] active:scale-[0.99] flex items-center gap-3 opacity-0'
                 onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = 'var(--color-light-pink)'}
                 onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
                 onMouseDown={(e) => (e.target as HTMLElement).style.backgroundColor = 'var(--color-blush-pink)'}
                 onMouseUp={(e) => (e.target as HTMLElement).style.backgroundColor = 'var(--color-light-pink)'}
                 style={{
-                  animation: 'fadeInSlide 0.3s ease-out 0.2s forwards'
+                  animation: 'fadeInSlide 0.3s ease-out 0.15s forwards'
                 }}
               >
                 <svg className='w-5 h-5 text-gray-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
@@ -128,7 +141,7 @@ export default function Header({
               
               <div className='pt-3 mt-3 border-t opacity-0' style={{
                 borderTopColor: 'var(--color-light-grey)',
-                animation: 'fadeInSlide 0.3s ease-out 0.3s forwards'
+                animation: 'fadeInSlide 0.3s ease-out 0.2s forwards'
               }}>
                 <div className='px-4 py-2 text-sm text-gray-500'>
                   Progress: {completeCount}/{totalStops} stops complete ({percent}%)

@@ -23,7 +23,6 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Server-specific */
-    "types": ["node"],
     "baseUrl": "./src"
   },
   "include": ["src"],
