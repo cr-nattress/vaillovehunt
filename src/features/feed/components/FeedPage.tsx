@@ -57,33 +57,6 @@ export default function FeedPage({ onNavigate, percent, completeCount, totalStop
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className='sticky top-0 z-20 backdrop-blur-md border-b' style={{
-        backgroundColor: 'var(--color-cabernet)', 
-        borderBottomColor: 'var(--color-blush-pink)'
-      }}>
-        <div className='max-w-screen-sm mx-auto px-4 py-4 flex items-center justify-between'>
-          <div className='flex items-center gap-3'>
-            <h1 className='text-xl md:text-2xl font-semibold text-white'>Team Feed</h1>
-            {percent === 100 && (
-              <div className='flex items-center gap-1 px-2 py-1 bg-white/20 rounded-full'>
-                <span className='text-xs'>🏆</span>
-                <span className='text-xs font-medium text-white'>Complete</span>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={() => onNavigate('hunt')}
-            className='p-3 rounded-lg transition-colors text-white hover:bg-white/10'
-            aria-label='Back to hunt'
-          >
-            <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-            </svg>
-          </button>
-        </div>
-      </header>
-      
       <main 
         className="max-w-screen-sm mx-auto px-4 py-5"
         style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}
