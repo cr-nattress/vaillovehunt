@@ -31,24 +31,49 @@ export default function FooterNav({
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
 
   useEffect(() => {
+    let initialViewportHeight = window.innerHeight
+    
     const handleResize = () => {
-      // Basic heuristic for virtual keyboard detection on mobile
+      // Improved heuristic for virtual keyboard detection on mobile
       if (window.innerWidth < 768) {
         const currentHeight = window.innerHeight
-        const initialHeight = window.screen.height
-        const heightDiff = initialHeight - currentHeight
-        setIsKeyboardVisible(heightDiff > 150) // Threshold for keyboard
+        const heightDiff = initialViewportHeight - currentHeight
+        
+        // More conservative approach - only hide if significant reduction AND we have focus on an input
+        const hasInputFocus = document.activeElement && 
+          (document.activeElement.tagName === 'INPUT' || 
+           document.activeElement.tagName === 'TEXTAREA' ||
+           document.activeElement.contentEditable === 'true')
+        
+        // Only consider keyboard visible if height reduced significantly AND an input has focus
+        const shouldHideForKeyboard = heightDiff > 200 && hasInputFocus
+        
+        console.log(`🔧 FooterNav keyboard detection: heightDiff=${heightDiff}, hasInputFocus=${hasInputFocus}, willHide=${shouldHideForKeyboard}`)
+        setIsKeyboardVisible(shouldHideForKeyboard)
+      } else {
+        // On desktop, never hide the footer
+        setIsKeyboardVisible(false)
       }
     }
 
+    // Set initial height
+    initialViewportHeight = window.innerHeight
+    
     window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    document.addEventListener('focusin', handleResize)
+    document.addEventListener('focusout', handleResize)
+    
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      document.removeEventListener('focusin', handleResize)
+      document.removeEventListener('focusout', handleResize)
+    }
   }, [])
 
   return (
     <footer 
       className={`fixed bottom-0 left-0 right-0 z-40 transition-transform duration-300 ${
-        isKeyboardVisible ? 'md:transform-none transform translate-y-full' : ''
+        isKeyboardVisible ? 'md:transform-none transform translate-y-full' : 'transform translate-y-0'
       }`}
       style={{
         backgroundColor: 'var(--color-white)',

@@ -305,8 +305,12 @@ export default function App() {
     setUploadingStops(prev => new Set([...prev, stopId]))
     
     try {
+      // Ensure we have a team name - use default if empty
+      const effectiveTeamName = teamName || 'Blue'
+      console.log(`🏷️ Using teamName: "${effectiveTeamName}" (original: "${teamName}")`)
+      
       // Check if photo already exists in Zustand store
-      const existingPhotos = getTeamPhotos(locationName, eventName, teamName)
+      const existingPhotos = getTeamPhotos(locationName, eventName, effectiveTeamName)
       const existingPhoto = existingPhotos.find(photo => photo.locationId === stopId)
       
       if (existingPhoto) {
@@ -324,13 +328,14 @@ export default function App() {
         
         // Upload to server/Cloudinary
         console.log(`📸 Uploading new photo for ${stop.title}`)
+        
         const uploadResponse = await PhotoUploadService.uploadPhotoWithResize(
           file, 
           stop.title, 
           sessionId,
           1600, // maxWidth
           0.8,  // quality
-          teamName,
+          effectiveTeamName,
           locationName,
           eventName
         )
@@ -345,12 +350,12 @@ export default function App() {
         
         // Save to Zustand (replaces localStorage)
         console.log(`💾 Saving photo record to Zustand...`)
-        saveTeamPhoto(locationName, eventName, teamName, photoRecord)
+        saveTeamPhoto(locationName, eventName, effectiveTeamName, photoRecord)
         
         // Also save to PhotoService API for feed access
         console.log(`💾 Saving photo record to PhotoService API...`)
         try {
-          await PhotoService.saveTeamPhoto(locationName, eventName, teamName, photoRecord)
+          await PhotoService.saveTeamPhoto(locationName, eventName, effectiveTeamName, photoRecord)
           console.log(`✅ Photo saved to API successfully`)
         } catch (apiError) {
           console.warn(`⚠️ Failed to save to API, but continuing:`, apiError)
