@@ -1,5 +1,5 @@
 import React from 'react'
-import { PageType } from '../../store/appStore'
+import type { PageType } from '../../store/navigation.store'
 
 interface HeaderProps {
   isMenuOpen: boolean

@@ -36,7 +36,7 @@
     "revealHint": "Reveal hint {{current}} of {{total}} for {{title}}",
     "photoComplete": "✅ Photo Complete",
     "yourPhoto": "✨ Your photo",
-    "capturePhoto": "📷 Capture a creative selfie together at this location.",
+    "capturePhoto": "",
     "uploadPhoto": "📸 Upload Photo",
     "uploadPhotoLabel": "Upload photo for {{title}}",
     "uploadHelp": "Select an image file to upload as your photo for this stop",

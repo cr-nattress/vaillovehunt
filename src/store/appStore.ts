@@ -11,72 +11,29 @@ export interface PhotoRecord {
   locationId: string
 }
 
-// Navigation types
-export type PageType = 'hunt' | 'feed' | 'event'
-export type TaskTab = 'current' | 'completed'
+// Navigation types moved to navigation.store.ts
 
-// Preview state type for Phase 1
-export interface PhotoPreview {
-  objectUrl?: string
-  dataUrl?: string
-  fileMeta?: {
-    name: string
-    type: string
-    size: number
-  }
-  savedLocally: boolean
-  savedAt?: number
-}
-
-// Progress state type
-export interface StopProgress {
-  done: boolean
-  notes: string
-  photo: string | null
-  revealedHints: number
-  completedAt?: string
-  preview?: PhotoPreview
-}
+// Progress and preview types moved to progress.store.ts
 
 interface AppState {
-  locationName: string
-  teamName: string
   sessionId: string
-  eventName: string
-  lockedByQuery: boolean
-  // UI intents
-  openEventSettingsOnce?: boolean
+  // Event identity and UI intents moved to event.store.ts
   
-  // Navigation state (Phase 1 - Mirror Mode)
-  currentPage: PageType
-  taskTab: TaskTab
+  // Navigation state moved to navigation.store.ts
   
-  // Progress state (per stop)
-  progress: Record<string, StopProgress>
+  // Progress state moved to progress.store.ts
   
   // Team photos (properly structured by org/event/team)
   teamPhotos: Record<string, Record<string, Record<string, PhotoRecord[]>>> // [org][event][team]: PhotoRecord[]
 }
 
 interface AppActions {
-  setLocationName: (locationName: string) => void
-  setTeamName: (teamName: string) => void
   setSessionId: (sessionId: string) => void
-  setEventName: (eventName: string) => void
-  setLockedByQuery: (locked: boolean) => void
+  // Event actions moved to event.store.ts
   
-  // Navigation actions (Phase 1 - Mirror Mode)
-  navigate: (page: PageType) => void
-  setTaskTab: (tab: TaskTab) => void
+  // Navigation actions moved to navigation.store.ts
   
-  // Progress actions
-  setProgress: (progress: Record<string, StopProgress>) => void
-  updateStopProgress: (stopId: string, progressData: StopProgress) => void
-  resetProgress: () => void
-  
-  // Preview actions (Phase 1)
-  selectPhoto: (stopId: string, file: File) => void
-  cancelPreview: (stopId: string) => void
+  // Progress and preview actions moved to progress.store.ts
   
   // Photo actions
   saveTeamPhoto: (locationName: string, eventName: string, teamName: string, photo: PhotoRecord) => void
@@ -84,15 +41,12 @@ interface AppActions {
   clearTeamPhotos: (locationName: string, eventName: string, teamName: string) => void
   clearAllTeamData: () => void
   
-  // Team switching
-  switchTeam: (newTeamName: string) => void
+  // Team switching (updated to accept event context and return team photos)
+  switchTeam: (newTeamName: string, locationName: string, eventName: string) => PhotoRecord[]
   
-  // Phase 3: Hydration action for restoring ObjectURLs
-  hydratePreviewsFromStorage: () => void
+  // Hydration action moved to progress.store.ts
 
-  // UI intents
-  requestOpenEventSettings: () => void
-  clearOpenEventSettings: () => void
+  // UI intents moved to event.store.ts
 }
 
 type AppStore = AppState & AppActions
@@ -110,192 +64,21 @@ export const useAppStore = create<AppStore>()(
   persist(
     (set, get) => ({
       // State
-      locationName: 'BHHS',
-      teamName: '',
       sessionId: generateSessionId(),
-      eventName: 'Vail',
-      lockedByQuery: false,
-      openEventSettingsOnce: false,
+      // Event state moved to event.store.ts
       
-      // Navigation state (Phase 1 - Mirror Mode)
-      currentPage: 'hunt',
-      taskTab: 'current',
+      // Navigation state moved to navigation.store.ts
+      // Progress state moved to progress.store.ts
       
-      progress: {},
       teamPhotos: {},
       
       // Basic actions
-      setLocationName: (locationName: string) => set({ locationName }),
-      setTeamName: (teamName: string) => set({ teamName }),
       setSessionId: (sessionId: string) => set({ sessionId }),
-      setEventName: (eventName: string) => set({ eventName }),
-      setLockedByQuery: (locked: boolean) => set({ lockedByQuery: locked }),
+      // Event actions moved to event.store.ts
       
-      // Navigation actions (Phase 6 - Final with validation)
-      navigate: (page: PageType) => {
-        console.log(`🧭 Store Navigation: Setting page to ${page}`)
-        
-        // Phase 6: Validation with dev warnings
-        if (process.env.NODE_ENV === 'development') {
-          if (!['hunt', 'feed', 'event'].includes(page)) {
-            console.warn(`⚠️ Invalid page value: ${page}. Must be 'hunt', 'feed', or 'event'.`)
-            return
-          }
-        }
-        
-        set({ currentPage: page })
-      },
+      // Navigation actions moved to navigation.store.ts
       
-      setTaskTab: (tab: TaskTab) => {
-        console.log(`🧭 Store Navigation: Setting task tab to ${tab}`)
-        
-        // Phase 6: Validation with dev warnings
-        if (process.env.NODE_ENV === 'development') {
-          if (!['current', 'completed'].includes(tab)) {
-            console.warn(`⚠️ Invalid task tab value: ${tab}. Must be 'current' or 'completed'.`)
-            return
-          }
-        }
-        
-        set({ taskTab: tab })
-      },
-      
-      // Progress actions
-      setProgress: (progress: Record<string, StopProgress>) => set({ progress }),
-      
-      updateStopProgress: (stopId: string, progressData: StopProgress) => set((state) => ({
-        progress: {
-          ...state.progress,
-          [stopId]: progressData
-        }
-      })),
-      
-      resetProgress: () => set({ progress: {} }),
-      
-      // Preview actions (Phase 3: Local Persistence)
-      selectPhoto: (stopId: string, file: File) => {
-        console.log(`📷 PREVIEW: Selecting photo for ${stopId}:`, { name: file.name, type: file.type, size: file.size })
-        
-        // Phase 3: Create both ObjectURL (for immediate display) and DataURL (for persistence)
-        const objectUrl = URL.createObjectURL(file)
-        
-        // Convert to DataURL for localStorage persistence
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          const dataUrl = e.target?.result as string
-          
-          set((state) => {
-            // Clean up any existing objectUrl for this stop to prevent leaks
-            const existingPreview = state.progress[stopId]?.preview
-            if (existingPreview?.objectUrl) {
-              URL.revokeObjectURL(existingPreview.objectUrl)
-            }
-            
-            const preview: PhotoPreview = {
-              objectUrl, // For immediate display
-              dataUrl,   // For persistence
-              fileMeta: {
-                name: file.name,
-                type: file.type,
-                size: file.size
-              },
-              savedLocally: true,
-              savedAt: Date.now()
-            }
-            
-            return {
-              progress: {
-                ...state.progress,
-                [stopId]: {
-                  ...state.progress[stopId],
-                  done: false,
-                  notes: state.progress[stopId]?.notes || '',
-                  photo: null,
-                  revealedHints: state.progress[stopId]?.revealedHints || 1,
-                  preview
-                }
-              }
-            }
-          })
-        }
-        
-        // Phase 3: Optional image resizing before storing
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
-        const img = new Image()
-        
-        img.onload = () => {
-          // Calculate dimensions for resizing (max 800px width/height)
-          const maxSize = 800
-          let { width, height } = img
-          
-          if (width > height) {
-            if (width > maxSize) {
-              height = (height * maxSize) / width
-              width = maxSize
-            }
-          } else {
-            if (height > maxSize) {
-              width = (width * maxSize) / height
-              height = maxSize
-            }
-          }
-          
-          canvas.width = width
-          canvas.height = height
-          
-          // Draw resized image
-          ctx?.drawImage(img, 0, 0, width, height)
-          
-          // Convert to blob with compression
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                reader.readAsDataURL(blob)
-              }
-            },
-            'image/jpeg',
-            0.8 // 80% quality
-          )
-        }
-        
-        img.src = objectUrl
-      },
-      
-      // Phase 3: Hydration action for restoring ObjectURLs from persisted DataURLs
-      hydratePreviewsFromStorage: () => {
-        // No-op in current implementation. If needed, we could traverse state.progress
-        // and reconstruct object URLs from persisted data URLs. Left intentionally light
-        // to satisfy the interface and keep logic centralized in components that need it.
-        console.log('🧪 hydratePreviewsFromStorage invoked (no-op)')
-      },
-      
-      cancelPreview: (stopId: string) => {
-        console.log(`🗑️ PREVIEW: Cancelling preview for ${stopId}`)
-        
-        set((state) => {
-          const existingPreview = state.progress[stopId]?.preview
-          
-          // Clean up objectUrl to prevent memory leaks
-          if (existingPreview?.objectUrl) {
-            URL.revokeObjectURL(existingPreview.objectUrl)
-          }
-          
-          return {
-            progress: {
-              ...state.progress,
-              [stopId]: {
-                ...state.progress[stopId],
-                done: state.progress[stopId]?.done || false,
-                notes: state.progress[stopId]?.notes || '',
-                photo: state.progress[stopId]?.photo || null,
-                revealedHints: state.progress[stopId]?.revealedHints || 1,
-                preview: undefined
-              }
-            }
-          }
-        })
-      },
+      // Progress and preview actions moved to progress.store.ts
       
       // Photo actions
       saveTeamPhoto: (locationName: string, eventName: string, teamName: string, photo: PhotoRecord) => {
@@ -345,55 +128,31 @@ export const useAppStore = create<AppStore>()(
       
       clearAllTeamData: () => {
         console.log(`🧹 ZUSTAND: Clearing all team data`);
-        set({ progress: {}, teamPhotos: {} });
+        set({ teamPhotos: {} });
       },
       
-      // Team switching - clear progress but keep all team photos
-      switchTeam: (newTeamName: string) => {
-        console.log(`🔄 ZUSTAND: Switching to team ${newTeamName} - clearing progress but keeping photos`);
+      // Team switching - switched to just return team photos (progress handled in progress store)
+      switchTeam: (newTeamName: string, locationName: string, eventName: string) => {
+        console.log(`🔄 ZUSTAND: Switching to team ${newTeamName} - getting photos for the team`);
         
-        set((state) => {
-          // Load photos for new team into progress
-          const { locationName, eventName } = state;
-          const teamPhotos = state.teamPhotos[locationName]?.[eventName]?.[newTeamName] || [];
-          
-          // Convert photos to progress entries
-          const newProgress: Record<string, StopProgress> = {};
-          teamPhotos.forEach(photo => {
-            newProgress[photo.locationId] = {
-              done: true,
-              notes: '',
-              photo: photo.photoUrl,
-              completedAt: photo.uploadedAt,
-              revealedHints: 1
-            };
-          });
-          
-          console.log(`🔄 ZUSTAND: Loaded ${teamPhotos.length} photos for org=${locationName}, event=${eventName}, team=${newTeamName}:`, newProgress);
-          
-          return {
-            teamName: newTeamName,
-            progress: newProgress
-          };
-        });
+        const state = get();
+        const teamPhotos = state.teamPhotos[locationName]?.[eventName]?.[newTeamName] || [];
+        
+        console.log(`🔄 ZUSTAND: Found ${teamPhotos.length} photos for org=${locationName}, event=${eventName}, team=${newTeamName}:`, teamPhotos);
+        
+        return teamPhotos; // Return photos so the caller can update progress store if needed
       },
 
-      // UI intents: allow other components to open the Event settings panel once
-      requestOpenEventSettings: () => set({ openEventSettingsOnce: true }),
-      clearOpenEventSettings: () => set({ openEventSettingsOnce: false })
+      // UI intents moved to event.store.ts
     }),
     {
       name: 'vail-hunt-store', // localStorage key
       partialize: (state) => ({ 
-        locationName: state.locationName,
-        teamName: state.teamName,
         sessionId: state.sessionId,
-        eventName: state.eventName,
-        progress: state.progress,
-        teamPhotos: state.teamPhotos,
-        // Phase 5: Persist navigation state
-        currentPage: state.currentPage,
-        taskTab: state.taskTab
+        teamPhotos: state.teamPhotos
+        // Progress state persisted in progress.store.ts
+        // Event state persisted in event.store.ts
+        // Navigation state persisted in navigation.store.ts
       })
     }
   )

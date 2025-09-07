@@ -30,7 +30,12 @@
       "Bash(ren:*)",
       "Bash(start http://localhost:5178)",
       "Bash(npx vitest run:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(start http://localhost:5183)",
+      "Bash(git restore:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

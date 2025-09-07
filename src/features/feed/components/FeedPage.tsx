@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { PageType } from '../../../store/appStore'
+import { PageType } from '../../../store/navigation.store'
 import PostCard from './PostCard'
 import FooterNav from '../../app/FooterNav'
 import { FeedPost } from '../types'
 import { FeedService } from '../services/FeedService'
-import { useAppStore } from '../../../store/appStore'
+import { useEventStore } from '../../../store/event.store'
 
 interface FeedPageProps {
   onNavigate: (page: PageType) => void
@@ -14,7 +14,7 @@ interface FeedPageProps {
 }
 
 export default function FeedPage({ onNavigate, percent, completeCount, totalStops }: FeedPageProps) {
-  const { locationName, eventName, teamName } = useAppStore()
+  const { locationName, eventName, teamName } = useEventStore()
   const [posts, setPosts] = useState<FeedPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

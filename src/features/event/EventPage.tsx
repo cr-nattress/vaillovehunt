@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { PageType } from '../../store/appStore'
+import { PageType } from '../../store/navigation.store'
 import { useAppStore } from '../../store/appStore'
+import { useNavigationStore } from '../../store/navigation.store'
+import { useEventStore } from '../../store/event.store'
 import FooterNav from '../app/FooterNav'
 import ProgressGauge from '../../components/ProgressGauge'
 import SettingsPanel from '../app/SettingsPanel'
@@ -35,7 +37,7 @@ export default function EventPage({
     setEventName,
     openEventSettingsOnce,
     clearOpenEventSettings
-  } = useAppStore()
+  } = useEventStore()
   
   const [isEditMode, setIsEditMode] = useState(false)
 
