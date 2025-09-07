@@ -28,7 +28,8 @@
       "Bash(start http://localhost:5173/BHHS/Vail/Blue)",
       "Bash(move:*)",
       "Bash(ren:*)",
-      "Bash(start http://localhost:5178)"
+      "Bash(start http://localhost:5178)",
+      "Bash(npx vitest run:*)"
     ],
     "deny": [],
     "ask": []

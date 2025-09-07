@@ -1,5 +1,5 @@
 import React from 'react'
-import StopCard from './StopCard'
+import StopCard from './stop-card/StopCard'
 import CompletedAccordion from './CompletedAccordion'
 
 interface StopsListProps {
@@ -85,19 +85,27 @@ export default function StopsList({
 
   const handleRevealNextHint = (stopId: string) => {
     console.log(`🔍 REVEAL HINT FUNCTION: stopId=${stopId}`)
-    const state = progress[stopId] || { done: false, notes: '', photo: null, revealedHints: 1 }
     const stop = stops.find(s => s.id === stopId)
-    console.log(`🔍 Current state:`, state)
     console.log(`🔍 Stop found:`, stop?.title)
-    console.log(`🔍 Can reveal? ${stop && state.revealedHints < stop.hints.length}`)
     
-    if (stop && state.revealedHints < stop.hints.length) {
-      console.log(`🔍 REVEALING HINT: ${state.revealedHints} -> ${state.revealedHints + 1}`)
-      setProgress((p: any) => ({
-        ...p,
-        [stopId]: { ...state, revealedHints: state.revealedHints + 1 }
-      }))
-    }
+    setProgress((p: any) => {
+      const currentState = p[stopId] || { done: false, notes: '', photo: null, revealedHints: 1 }
+      console.log(`🔍 Current state in updater:`, currentState)
+      console.log(`🔍 Can reveal? ${stop && currentState.revealedHints < stop.hints.length}`)
+      
+      if (stop && currentState.revealedHints < stop.hints.length) {
+        console.log(`🔍 REVEALING HINT: ${currentState.revealedHints} -> ${currentState.revealedHints + 1}`)
+        const newState = {
+          ...p,
+          [stopId]: { ...currentState, revealedHints: currentState.revealedHints + 1 }
+        }
+        console.log(`🔍 New progress state:`, newState)
+        return newState
+      }
+      
+      console.log(`🔍 No change, returning current progress`)
+      return p
+    })
   }
 
   // Handle different view modes

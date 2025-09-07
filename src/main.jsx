@@ -7,6 +7,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.tsx'
+import ToastProvider from './features/notifications/ToastProvider.tsx'
 import './i18n/config.ts' // Initialize i18n
 
 // Register service worker for production caching
@@ -41,6 +42,8 @@ const container = document.getElementById('root')
 // Initialize a concurrent-mode root (React 18+) and render the top-level <App/> component.
 createRoot(container).render(
   <ErrorBoundary>
-    <App />
+    <ToastProvider>
+      <App />
+    </ToastProvider>
   </ErrorBoundary>
 )

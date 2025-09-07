@@ -27,60 +27,66 @@ export default function Header({
       backgroundColor: 'var(--color-cabernet)', 
       borderBottomColor: 'var(--color-blush-pink)'
     }}>
-      <div className='max-w-screen-sm mx-auto px-4 py-4 flex items-center justify-between'>
-        <div className='flex items-center gap-4'>
+      <div className='max-w-screen-sm mx-auto px-4 py-3 flex items-center justify-between'>
+        {/* Left side - Progress and simplified branding */}
+        <div className='flex items-center gap-3 min-w-0 flex-1'>
           {/* Progress Mini-Indicator */}
-          <div className='flex items-center gap-2'>
-            <div className='w-8 h-8 rounded-full border-2 border-white/30 flex items-center justify-center'>
+          <div className='flex items-center gap-2 flex-shrink-0'>
+            <div className='w-7 h-7 rounded-full border-2 border-white/30 flex items-center justify-center'>
               <span className='text-xs font-bold text-white'>{completeCount}</span>
             </div>
-            <div className='text-xs text-white/90 hidden sm:block'>
+            <div className='text-xs text-white/90 hidden sm:block whitespace-nowrap'>
               {percent}% Complete
             </div>
           </div>
           
-          {/* Official Berkshire Hathaway HomeServices Logo */}
-          <svg width="280" height="40" viewBox="0 0 280 40" className='text-white'>
-            {/* House icon/symbol */}
-            <g transform="translate(0,10)">
-              <path d="M8 8 L16 1 L24 8 L24 16 L20 16 L20 10 L12 10 L12 16 L8 16 Z" fill="white"/>
-              <rect x="15" y="3" width="2" height="4" fill="white"/>
-            </g>
+          {/* Simplified branding - responsive logo */}
+          <div className='flex items-center gap-2 min-w-0 flex-1'>
+            {/* House icon */}
+            <div className='flex-shrink-0'>
+              <svg width="24" height="20" viewBox="0 0 32 20" className='text-white'>
+                <path d="M8 8 L16 1 L24 8 L24 16 L20 16 L20 10 L12 10 L12 16 L8 16 Z" fill="white"/>
+                <rect x="15" y="3" width="2" height="4" fill="white"/>
+              </svg>
+            </div>
             
-            {/* BERKSHIRE HATHAWAY text */}
-            <text x="38" y="16" fill="white" fontSize="11" fontWeight="bold" fontFamily="Arial, sans-serif">BERKSHIRE HATHAWAY</text>
-            
-            {/* HomeServices text */}
-            <text x="38" y="30" fill="white" fontSize="9" fontWeight="normal" fontFamily="Arial, sans-serif">HomeServices</text>
-            
-            {/* Decorative line */}
-            <line x1="38" y1="20" x2="220" y2="20" stroke="white" strokeWidth="0.8"/>
-          </svg>
+            {/* Text logo - responsive */}
+            <div className='min-w-0 flex-1'>
+              {/* Desktop version */}
+              <div className='hidden sm:block'>
+                <div className='text-sm font-bold text-white leading-tight'>BERKSHIRE HATHAWAY</div>
+                <div className='text-xs text-white/90 leading-tight'>HomeServices</div>
+              </div>
+              {/* Mobile version */}
+              <div className='sm:hidden'>
+                <div className='text-sm font-bold text-white'>BHHS</div>
+              </div>
+            </div>
+          </div>
         </div>
         
-        {/* Hamburger Menu Button */}
+        {/* Right side - Hamburger Menu Button */}
         <button
           onClick={onToggleMenu}
-          className='relative p-3 rounded-lg transition-colors'
+          className='flex-shrink-0 p-2.5 rounded-lg transition-all duration-200 active:scale-95'
           style={{
             backgroundColor: 'rgba(255, 255, 255, 0.1)',
           }}
           onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
           onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
-          aria-label='Menu'
+          aria-label='Toggle menu'
+          aria-expanded={isMenuOpen}
         >
-          <div className='w-6 h-5 flex flex-col justify-between relative'>
+          <div className='w-5 h-4 flex flex-col justify-between relative'>
             <span 
-              className={`absolute top-0 left-0 right-0 h-0.5 bg-white transform transition-transform ${isMenuOpen ? 'rotate-45 translate-y-2' : ''}`}
-              style={{ width: '100%' }}
+              className={`absolute top-0 left-0 h-0.5 bg-white transform transition-all duration-300 ${isMenuOpen ? 'rotate-45 translate-y-1.5 w-5' : 'w-5'}`}
             />
             <span 
-              className={`absolute top-1/2 left-0 right-0 h-0.5 bg-white transition-opacity ${isMenuOpen ? 'opacity-0' : ''}`}
-              style={{ width: '100%', transform: 'translateY(-50%)' }}
+              className={`absolute top-1/2 left-0 h-0.5 bg-white transition-all duration-300 ${isMenuOpen ? 'opacity-0 w-5' : 'w-4'}`}
+              style={{ transform: 'translateY(-50%)' }}
             />
             <span 
-              className={`absolute bottom-0 left-0 right-0 h-0.5 bg-white transform transition-transform ${isMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}
-              style={{ width: '100%' }}
+              className={`absolute bottom-0 left-0 h-0.5 bg-white transform transition-all duration-300 ${isMenuOpen ? '-rotate-45 -translate-y-1.5 w-5' : 'w-3'}`}
             />
           </div>
         </button>
