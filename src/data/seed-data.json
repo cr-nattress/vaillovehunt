@@ -1,0 +1,201 @@
+{
+  "app-settings": {
+    "location": "BHHS",
+    "team": "",
+    "event": "Vail",
+    "updatedAt": "2025-09-07T07:40:00.000Z"
+  },
+  "organizations": [
+    {
+      "id": "bhhs",
+      "name": "BHHS",
+      "displayName": "Berkshire Hathaway HomeServices",
+      "events": ["Vail"],
+      "teams": ["RED", "BLUE", "GREEN", "PINK"],
+      "locations": "bhhs-locations.json"
+    }
+  ],
+  "events": [
+    {
+      "id": "vail",
+      "name": "Vail",
+      "displayName": "Vail Hunt Challenge",
+      "organizationId": "bhhs",
+      "organizationName": "BHHS",
+      "description": "Explore Vail Village and complete the ultimate scavenger hunt!",
+      "teams": ["RED", "BLUE", "GREEN", "PINK"],
+      "status": "active",
+      "startDate": "2025-09-07T00:00:00.000Z",
+      "endDate": "2025-12-31T23:59:59.000Z"
+    }
+  ],
+  "teams": [
+    {
+      "id": "red",
+      "name": "RED",
+      "displayName": "Team Red",
+      "color": "#DC2626",
+      "organizationId": "bhhs",
+      "eventId": "vail",
+      "members": ["Sarah M.", "Mike T.", "Jessica L.", "David R."],
+      "completedStops": ["bhhs-vail-office", "covered-bridge"],
+      "photos": [
+        {
+          "locationId": "bhhs-vail-office",
+          "photoUrl": "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&h=600&fit=crop&crop=center",
+          "title": "Team Red at BHHS Office",
+          "uploadedAt": "2025-09-07T10:30:00.000Z"
+        },
+        {
+          "locationId": "covered-bridge", 
+          "photoUrl": "https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=800&h=600&fit=crop&crop=center",
+          "title": "Team Red on Covered Bridge",
+          "uploadedAt": "2025-09-07T11:15:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "blue", 
+      "name": "BLUE",
+      "displayName": "Team Blue",
+      "color": "#2563EB",
+      "organizationId": "bhhs",
+      "eventId": "vail",
+      "members": ["Alex P.", "Emma W.", "Chris B.", "Maya K."],
+      "completedStops": ["clock-tower", "gore-creek-views"],
+      "photos": [
+        {
+          "locationId": "clock-tower",
+          "photoUrl": "https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&h=600&fit=crop&crop=center",
+          "title": "Team Blue at Clock Tower",
+          "uploadedAt": "2025-09-07T10:45:00.000Z"
+        },
+        {
+          "locationId": "gore-creek-views",
+          "photoUrl": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop&crop=center", 
+          "title": "Team Blue by Gore Creek",
+          "uploadedAt": "2025-09-07T11:30:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "green",
+      "name": "GREEN", 
+      "displayName": "Team Green",
+      "color": "#059669",
+      "organizationId": "bhhs",
+      "eventId": "vail",
+      "members": ["Jordan F.", "Taylor S.", "Morgan D.", "Casey V."],
+      "completedStops": ["luxury-mountain-home"],
+      "photos": [
+        {
+          "locationId": "luxury-mountain-home",
+          "photoUrl": "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800&h=600&fit=crop&crop=center",
+          "title": "Team Green at Mountain Property", 
+          "uploadedAt": "2025-09-07T11:00:00.000Z"
+        }
+      ]
+    }
+  ],
+  "sample-progress": {
+    "RED": {
+      "bhhs-vail-office": {
+        "done": true,
+        "notes": "Found the office! Great team photo by the BHHS sign. 📸",
+        "photo": "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&h=600&fit=crop&crop=center",
+        "revealedHints": 2,
+        "completedAt": "2025-09-07T10:30:00.000Z"
+      },
+      "covered-bridge": {
+        "done": true,
+        "notes": "Beautiful bridge! Perfect romantic spot for photos. 💕",
+        "photo": "https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=800&h=600&fit=crop&crop=center",
+        "revealedHints": 1,
+        "completedAt": "2025-09-07T11:15:00.000Z"
+      },
+      "community-gathering": {
+        "done": false,
+        "notes": "Looking for the community center...",
+        "photo": null,
+        "revealedHints": 1
+      }
+    },
+    "BLUE": {
+      "clock-tower": {
+        "done": true,
+        "notes": "Found the iconic clock tower - great meeting spot! ⏰",
+        "photo": "https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&h=600&fit=crop&crop=center",
+        "revealedHints": 1,
+        "completedAt": "2025-09-07T10:45:00.000Z"
+      },
+      "gore-creek-views": {
+        "done": true,
+        "notes": "Amazing creek views - definitely increases property value! 🏞️",
+        "photo": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop&crop=center",
+        "revealedHints": 2,
+        "completedAt": "2025-09-07T11:30:00.000Z"
+      },
+      "family-friendly-area": {
+        "done": false,
+        "notes": "Still searching for the family recreation zone...",
+        "photo": null,
+        "revealedHints": 1
+      }
+    },
+    "GREEN": {
+      "luxury-mountain-home": {
+        "done": true,
+        "notes": "Wow! This property showcases amazing mountain architecture! 🏔️",
+        "photo": "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800&h=600&fit=crop&crop=center",
+        "revealedHints": 1,
+        "completedAt": "2025-09-07T11:00:00.000Z"
+      },
+      "mountain-access-point": {
+        "done": false,
+        "notes": "Heading to find the mountain adventure gateway...",
+        "photo": null,
+        "revealedHints": 2
+      },
+      "ski-slope-access": {
+        "done": false,
+        "notes": "",
+        "photo": null,
+        "revealedHints": 1
+      }
+    }
+  },
+  "today-events": {
+    "BHHS-Vail-Hunt": {
+      "orgName": "BHHS",
+      "eventName": "Vail Hunt Challenge",
+      "orgSlug": "bhhs",
+      "startAt": "2025-09-07T09:00:00.000Z",
+      "endAt": "2025-09-07T18:00:00.000Z",
+      "description": "Explore Vail Village and discover amazing mountain properties!",
+      "teams": ["RED", "BLUE", "GREEN"],
+      "totalStops": 9,
+      "completedStops": {
+        "RED": 2,
+        "BLUE": 2, 
+        "GREEN": 1
+      },
+      "status": "active"
+    },
+    "BHHS-Winter-Challenge": {
+      "orgName": "BHHS",
+      "eventName": "Winter Mountain Explorer",
+      "orgSlug": "bhhs",
+      "startAt": "2025-09-07T10:00:00.000Z",
+      "endAt": "2025-09-07T16:00:00.000Z",
+      "description": "Discover the best of Vail's winter mountain properties!",
+      "teams": ["POWDER", "SNOW", "ICE"],
+      "totalStops": 6,
+      "completedStops": {
+        "POWDER": 0,
+        "SNOW": 0,
+        "ICE": 0
+      },
+      "status": "starting-soon"
+    }
+  }
+}

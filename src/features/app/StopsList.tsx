@@ -1,6 +1,7 @@
 import React from 'react'
 import StopCard from './stop-card/StopCard'
 import CompletedAccordion from './CompletedAccordion'
+import { useProgressStore } from '../../store/progress.store'
 
 interface StopsListProps {
   stops: any[]
@@ -29,6 +30,7 @@ export default function StopsList({
   setProgress,
   view = 'current'
 }: StopsListProps) {
+  const { updateStopProgress } = useProgressStore()
   // Get completed stops sorted by completion timestamp (earliest first)
   const completedStops = stops
     .filter(stop => progress[stop.id]?.done && !transitioningStops.has(stop.id))
@@ -87,25 +89,26 @@ export default function StopsList({
     console.log(`🔍 REVEAL HINT FUNCTION: stopId=${stopId}`)
     const stop = stops.find(s => s.id === stopId)
     console.log(`🔍 Stop found:`, stop?.title)
-    
-    setProgress((p: any) => {
-      const currentState = p[stopId] || { done: false, notes: '', photo: null, revealedHints: 1 }
-      console.log(`🔍 Current state in updater:`, currentState)
-      console.log(`🔍 Can reveal? ${stop && currentState.revealedHints < stop.hints.length}`)
+
+    const currentState = progress[stopId] || { done: false, notes: '', photo: null, revealedHints: 1 }
+    const canReveal = !!stop && currentState.revealedHints < (stop?.hints?.length || 0)
+    console.log(`🔍 Current state:`, currentState)
+    console.log(`🔍 Can reveal? ${canReveal}`)
+
+    if (canReveal) {
+      const nextState = { ...currentState, revealedHints: currentState.revealedHints + 1 }
+      console.log(`🔍 REVEALING HINT: ${currentState.revealedHints} -> ${nextState.revealedHints}`)
+      updateStopProgress(stopId, nextState)
       
-      if (stop && currentState.revealedHints < stop.hints.length) {
-        console.log(`🔍 REVEALING HINT: ${currentState.revealedHints} -> ${currentState.revealedHints + 1}`)
-        const newState = {
-          ...p,
-          [stopId]: { ...currentState, revealedHints: currentState.revealedHints + 1 }
-        }
-        console.log(`🔍 New progress state:`, newState)
-        return newState
-      }
-      
-      console.log(`🔍 No change, returning current progress`)
-      return p
-    })
+      // Verify the update was applied to the store
+      setTimeout(() => {
+        const updatedState = useProgressStore.getState().progress[stopId]
+        console.log(`✅ POST-UPDATE VERIFICATION: stopId=${stopId}, revealedHints=${updatedState?.revealedHints || 'undefined'}`)
+        console.log(`✅ FULL STATE FOR STOP:`, updatedState)
+      }, 0)
+    } else {
+      console.log(`🔍 No change, max hints reached or stop missing`)
+    }
   }
 
   // Handle different view modes

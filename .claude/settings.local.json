@@ -29,7 +29,8 @@
       "Bash(move:*)",
       "Bash(ren:*)",
       "Bash(start http://localhost:5178)",
-      "Bash(npx vitest run:*)"
+      "Bash(npx vitest run:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

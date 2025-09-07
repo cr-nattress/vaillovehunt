@@ -1,5 +1,7 @@
 import React, { memo, useMemo, useCallback } from 'react'
 import ProgressRing from '../../components/ProgressRing'
+import StopCardActions from './stop-card/StopCardActions'
+import StopCardMedia from './stop-card/StopCardMedia'
 
 const PLACEHOLDER = '/images/selfie-placeholder.svg'
 
@@ -152,13 +154,6 @@ const StopCard = memo(function StopCard({
   const isUploading = useMemo(() => uploadingStops.has(stop.id), [uploadingStops, stop.id])
 
   // Memoize event handlers to prevent unnecessary re-renders
-  const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file && file.type.startsWith('image/')) {
-      await onUpload(stop.id, file)
-    }
-  }, [onUpload, stop.id])
-
   const handleToggleExpanded = useCallback(() => {
     if (state.done && !isTransitioning) {
       onToggleExpanded(stop.id)
@@ -307,83 +302,26 @@ const StopCard = memo(function StopCard({
       </div>
     )}
 
-    {/* Separated Photo Upload Section */}
-    {(!state.done || expanded) && (
-      <div className='mt-2 rounded-xl border p-3 shadow-sm' style={{ backgroundColor: 'var(--color-white)' }}>
-        {state.photo ? (
-          <>
-            <div className={`text-xs uppercase tracking-wide mb-2`} style={{ color: 'var(--color-success)' }}>
-              ✅ Photo Complete
-            </div>
-            <img src={displayImage} alt={`Photo for ${stop.title}`} className='rounded-md object-cover w-full h-40 mb-2' onError={(e) => {(e.target as HTMLElement).style.display='none'}} />
-            <div className='mt-2 flex items-center gap-2 text-xs text-slate-500'>
-              ✨ Your photo
-            </div>
-          </>
-        ) : (
-          <div className='flex items-center gap-2 text-xs text-slate-500 mb-2'>
-            📷 Capture a creative selfie together at this location.
-          </div>
-        )}
+    {/* Phase 2: Use new modular components */}
+    <StopCardMedia 
+      stop={stop} 
+      state={state} 
+      expanded={expanded} 
+      displayImage={displayImage} 
+    />
+    
+    <StopCardActions
+      stop={stop}
+      state={state}
+      expanded={expanded}
+      isUploading={isUploading}
+      onUpload={onUpload}
+    />
 
-        {!state.photo && (
-          <div className='mt-3'>
-            <input 
-              type='file' 
-              accept='image/*' 
-              onChange={handlePhotoUpload}
-              className='sr-only'
-              id={`file-${stop.id}`}
-              aria-describedby={`upload-help-${stop.id}`}
-            />
-            <label 
-              htmlFor={`file-${stop.id}`}
-              className={`w-full px-4 py-3 text-white font-medium rounded-lg cursor-pointer flex items-center justify-center gap-2 transition-all duration-200 transform focus:ring-2 focus:ring-offset-2 focus:ring-opacity-50 focus:outline-none ${
-                isUploading 
-                  ? 'cursor-wait hover:scale-[1.02] active:scale-[0.98]' 
-                  : 'hover:scale-[1.02] active:scale-[0.98]'
-              }`} 
-              style={{ backgroundColor: isUploading ? 'var(--color-warm-grey)' : 'var(--color-cabernet)' }} 
-              onMouseEnter={(e) => { if (!isUploading) (e.target as HTMLElement).style.backgroundColor = 'var(--color-cabernet-hover)' }} 
-              onMouseLeave={(e) => { if (!isUploading) (e.target as HTMLElement).style.backgroundColor = 'var(--color-cabernet)' }}
-              onFocus={(e) => { if (!isUploading) (e.target as HTMLElement).style.backgroundColor = 'var(--color-cabernet-hover)' }}
-              onBlur={(e) => { if (!isUploading) (e.target as HTMLElement).style.backgroundColor = 'var(--color-cabernet)' }}
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  document.getElementById(`file-${stop.id}`)?.click()
-                }
-              }}
-              tabIndex={0}
-              role="button"
-              aria-disabled={isUploading}
-              aria-label={isUploading ? 'Processing photo upload' : `Upload photo for ${stop.title}`}
-            >
-              {isUploading ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Processing...
-                </>
-              ) : (
-                <>📸 Upload Photo</>
-              )}
-            </label>
-            <div id={`upload-help-${stop.id}`} className="sr-only">
-              Select an image file to upload as your photo for this stop
-            </div>
-          </div>
-        )}
-
-        {state.done && (
-          <div className='mt-3 flex items-center gap-2 text-sm italic' style={{ color: 'var(--color-cabernet)' }}>
-            <span>❤</span> {stop.funFact}
-          </div>
-        )}
+    {/* Fun fact when completed */}
+    {(!state.done || expanded) && state.done && (
+      <div className='mt-3 flex items-center gap-2 text-sm italic' style={{ color: 'var(--color-cabernet)' }}>
+        <span>❤</span> {stop.funFact}
       </div>
     )}
     </>

@@ -3,6 +3,7 @@ import { CollageService } from './client/CollageService'
 import { PhotoUploadService } from './client/PhotoUploadService'
 import { PhotoService } from './services/PhotoService'
 import { DualWriteService } from './client/DualWriteService'
+import { seedInitialData } from './services/SeedService'
 import ProgressGauge from './components/ProgressGauge'
 import AlbumViewer from './components/AlbumViewer'
 import Header from './features/app/Header'
@@ -11,6 +12,9 @@ import StopsList from './features/app/StopsList'
 import FooterNav from './features/app/FooterNav'
 import { UploadProvider } from './features/upload/UploadContext'
 import { useAppStore } from './store/appStore'
+import { useNavigationStore } from './store/navigation.store'
+import { useEventStore } from './store/event.store'
+import { useProgressStore } from './store/progress.store'
 import { getPathParams, isValidParamSet, normalizeParams } from './utils/url'
 import { slugify } from './utils/slug'
 import { base64ToFile, compressImage } from './utils/image'
@@ -21,6 +25,7 @@ import { getRandomStops } from './utils/random'
 // import { useHashRouter } from './hooks/useHashRouter'
 import FeedPage from './features/feed/components/FeedPage'
 import EventPage from './features/event/EventPage'
+import SplashScreen from './features/event/ModernSplashScreen'
 
 /**
  * Vail Love Hunt — React single-page app for a couples' scavenger/date experience in Vail.
@@ -32,16 +37,26 @@ import EventPage from './features/event/EventPage'
  */
 
 export default function App() {
-  // Use Zustand store for central state management
+  // Use Zustand stores for state management
   const { 
-    locationName, teamName, sessionId, eventName, lockedByQuery,
-    progress, teamPhotos,
-    // Navigation state (Phase 2 - App Consumes Store)
-    currentPage, navigate, taskTab, setTaskTab,
-    setLocationName, setTeamName, setEventName, setLockedByQuery,
-    setProgress, updateStopProgress, resetProgress, 
+    sessionId, teamPhotos,
     saveTeamPhoto, getTeamPhotos, clearTeamPhotos, clearAllTeamData, switchTeam
   } = useAppStore()
+  
+  // Navigation from dedicated store
+  const { currentPage, navigate, taskTab, setTaskTab } = useNavigationStore()
+  
+  // Event identity and UI intents from dedicated store
+  const { 
+    locationName, eventName, teamName, lockedByQuery,
+    setLocationName, setEventName, setTeamName, setLockedByQuery,
+    requestOpenEventSettings
+  } = useEventStore()
+  
+  // Progress state and actions from dedicated store
+  const { 
+    progress, setProgress, updateStopProgress, resetProgress, resetHints
+  } = useProgressStore()
   
   // Phase 3: Deprecated - no longer using hash router
   // const { currentPage: hashPage, navigateToPage: hashNavigateToPage } = useHashRouter()
@@ -49,6 +64,7 @@ export default function App() {
   const [stops, setStops] = useState(() => getRandomStops(locationName || 'BHHS'))
   const [isEditMode, setIsEditMode] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [showSplash, setShowSplash] = useState(false)
   
   // Calculate progress stats from Zustand state
   const completeCount = useMemo(() => stops.reduce((acc, s) => acc + ((progress[s.id]?.done) ? 1 : 0), 0), [progress, stops])
@@ -153,6 +169,9 @@ export default function App() {
 
     const initializeApp = async () => {
       try {
+        // Seed initial data for splash screen (BHHS, Vail, teams)
+        await seedInitialData({ skipExisting: true });
+        
         // Load saved settings using DualWriteService
         const savedSettings = await DualWriteService.get('app-settings');
         if (savedSettings) {
@@ -182,12 +201,20 @@ export default function App() {
         
         const results = await DualWriteService.createSession(sessionId, sessionData);
         console.log('✅ Session initialized:', results);
+        
+        // Reset all hints to 1 on fresh page load
+        resetHints();
       } catch (error) {
         console.error('❌ Failed to initialize app:', error);
       }
     };
     
     initializeApp();
+
+    // Show splash on root path when not locked by query params
+    if (window.location.pathname === '/' && !lockedByQuery) {
+      setShowSplash(true)
+    }
 
     return () => {
       window.removeEventListener('popstate', onPopState)
@@ -219,14 +246,22 @@ export default function App() {
     // Load team photos into progress via Zustand
     const teamPhotos = getTeamPhotos(locationName, eventName, teamName);
     
+    // Get current progress from store to preserve hint counts for existing stops
+    const { getState } = useProgressStore
+    const currentProgress = getState().progress;
+    
     const photoProgress = {};
     teamPhotos.forEach(photo => {
+      // Preserve existing revealed hints if this stop already exists in progress
+      const existingProgress = currentProgress[photo.locationId];
+      const preservedHints = existingProgress?.revealedHints || 1;
+      
       photoProgress[photo.locationId] = {
         done: true,
         notes: '',
         photo: photo.photoUrl,
         completedAt: photo.uploadedAt,
-        revealedHints: 1
+        revealedHints: preservedHints // Preserve existing hint progress
       };
     });
     
@@ -370,7 +405,7 @@ export default function App() {
         const compressedPhoto = await compressImage(file)
         setProgress(p => ({
           ...p,
-          [stopId]: { ...state, photo: compressedPhoto, done: true, completedAt: new Date().toISOString() }
+          [stopId]: { ...currentState, photo: compressedPhoto, done: true, completedAt: new Date().toISOString() }
         }))
         console.log('📷 Fallback to local storage successful')
       } catch (fallbackError) {
@@ -381,7 +416,7 @@ export default function App() {
           const photoData = reader.result
           setProgress(p => ({
             ...p,
-            [stopId]: { ...state, photo: photoData, done: true, completedAt: new Date().toISOString() }
+            [stopId]: { ...currentState, photo: photoData, done: true, completedAt: new Date().toISOString() }
           }))
           
           setTimeout(() => {
@@ -397,6 +432,18 @@ export default function App() {
         }
         reader.readAsDataURL(file)
       }
+    }
+  }
+
+  // Compatibility wrapper: allow functional updater style for setProgress
+  // Some components (e.g., StopsList) call setProgress((prev)=>next).
+  // The store's setProgress expects an object, so we adapt here.
+  const setProgressCompat = (next) => {
+    if (typeof next === 'function') {
+      const computed = next(progress)
+      setProgress(computed)
+    } else {
+      setProgress(next)
     }
   }
 
@@ -549,7 +596,24 @@ export default function App() {
       eventName={eventName}
     >
       <div className='min-h-screen text-slate-900 bg-gray-50'>
-        
+        {showSplash && (
+          <SplashScreen
+            onSelectEvent={(evt) => {
+              if (evt.orgName) setLocationName(evt.orgName)
+              if (evt.eventName) setEventName(evt.eventName)
+              navigate('event')
+              setShowSplash(false)
+              requestOpenEventSettings()
+            }}
+            onSetupNew={() => {
+              navigate('event')
+              setShowSplash(false)
+              requestOpenEventSettings()
+            }}
+            onClose={() => setShowSplash(false)}
+          />
+        )}
+
         <Header 
           isMenuOpen={isMenuOpen}
           onToggleMenu={() => setIsMenuOpen(!isMenuOpen)}
@@ -560,6 +624,59 @@ export default function App() {
           onToggleTips={() => setShowTips(!showTips)}
           onNavigate={navigate}
         />
+
+        {/* Rules slide-up panel rendered at app level so it works on any page */}
+        {showTips && (
+          <div className='fixed inset-0 z-30'>
+            <div 
+              className='absolute inset-0 bg-black/40 backdrop-blur-sm' 
+              onClick={()=>setShowTips(false)}
+              style={{
+                animation: 'fadeIn 0.2s ease-out forwards'
+              }}
+            />
+            <div 
+              className='absolute inset-x-0 bottom-0 rounded-t-3xl p-5 shadow-2xl pb-safe'
+              style={{
+                backgroundColor: 'var(--color-white)',
+                animation: 'slideUpModal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                marginBottom: '80px', // Offset for footer navigation
+                maxHeight: 'calc(100vh - 160px)', // Ensure it doesn't exceed viewport
+                overflowY: 'auto' // Allow scrolling if content is too long
+              }}
+            >
+              <div className='mx-auto max-w-screen-sm'>
+                <div className='flex items-center justify-between'>
+                  <h3 className='text-lg font-semibold flex items-center gap-2' style={{ color: 'var(--color-cabernet)' }}>📖 Rules</h3>
+                  <button 
+                    className='p-2 rounded-lg transition-all duration-150 transform hover:scale-110 active:scale-95' style={{ backgroundColor: 'transparent' }} onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--color-light-pink)'} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'} 
+                    onClick={()=>setShowTips(false)}
+                    aria-label='Close'
+                  >
+                    <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24' style={{ color: 'var(--color-medium-grey)' }}>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
+                    </svg>
+                  </button>
+                </div>
+                <div className='mt-3 space-y-3 text-sm' style={{ color: 'var(--color-dark-neutral)' }}>
+                  <p className='font-medium'>Navigate to each location and solve the clues to complete your scavenger hunt.</p>
+                  
+                  <div className='space-y-2'>
+                    <p className='font-medium'>Competition goals:</p>
+                    <ul className='list-disc pl-5 space-y-1'>
+                      <li>Complete all locations to finish the hunt.</li>
+                      <li>Use hints strategically to solve challenging clues.</li>
+                    </ul>
+                  </div>
+                  
+                  <p>Pay attention to your surroundings — details you notice along the way might help you solve the clues.</p>
+                  
+                  <p>Work together, explore strategically, and enjoy discovering Vail Village!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Live region for screen reader announcements */}
         <div id="status-announcements" aria-live="polite" aria-atomic="true" className="sr-only"></div>
@@ -649,7 +766,7 @@ export default function App() {
           onToggleExpanded={toggleExpanded}
           uploadingStops={uploadingStops}
           onPhotoUpload={handlePhotoUpload}
-          setProgress={setProgress}
+          setProgress={setProgressCompat}
           view="current"
         />
         </div>
@@ -672,60 +789,13 @@ export default function App() {
             onToggleExpanded={toggleExpanded}
             uploadingStops={uploadingStops}
             onPhotoUpload={handlePhotoUpload}
-            setProgress={setProgress}
+            setProgress={setProgressCompat}
             view="completed"
           />
         </div>
 
 
-        {showTips && (
-          <div className='fixed inset-0 z-30'>
-            <div 
-              className='absolute inset-0 bg-black/40 backdrop-blur-sm' 
-              onClick={()=>setShowTips(false)}
-              style={{
-                animation: 'fadeIn 0.2s ease-out forwards'
-              }}
-            />
-            <div 
-              className='absolute inset-x-0 bottom-0 rounded-t-3xl p-5 shadow-2xl'
-              style={{
-                backgroundColor: 'var(--color-white)',
-                animation: 'slideUpModal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
-              }}
-            >
-              <div className='mx-auto max-w-screen-sm'>
-                <div className='flex items-center justify-between'>
-                  <h3 className='text-lg font-semibold flex items-center gap-2' style={{ color: 'var(--color-cabernet)' }}>📖 Rules</h3>
-                  <button 
-                    className='p-2 rounded-lg transition-all duration-150 transform hover:scale-110 active:scale-95' style={{ backgroundColor: 'transparent' }} onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--color-light-pink)'} onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'} 
-                    onClick={()=>setShowTips(false)}
-                    aria-label='Close'
-                  >
-                    <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24' style={{ color: 'var(--color-medium-grey)' }}>
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
-                    </svg>
-                  </button>
-                </div>
-                <div className='mt-3 space-y-3 text-sm' style={{ color: 'var(--color-dark-neutral)' }}>
-                  <p className='font-medium'>Take a group photo in front of each location to prove you completed the clue.</p>
-                  
-                  <div className='space-y-2'>
-                    <p className='font-medium'>Two winners will be crowned:</p>
-                    <ul className='list-disc pl-5 space-y-1'>
-                      <li>The team that finishes first.</li>
-                      <li>The team with the most creative photos.</li>
-                    </ul>
-                  </div>
-                  
-                  <p>Pay attention to your surroundings — details you notice along the way might help you.</p>
-                  
-                  <p>Work together, be creative, and enjoy exploring Vail Village!</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        
 
       </main>
         

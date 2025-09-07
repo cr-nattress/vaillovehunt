@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { PageType } from '../../store/appStore'
 import { useAppStore } from '../../store/appStore'
 import FooterNav from '../app/FooterNav'
@@ -32,13 +32,24 @@ export default function EventPage({
     lockedByQuery,
     setLocationName, 
     setTeamName, 
-    setEventName 
+    setEventName,
+    openEventSettingsOnce,
+    clearOpenEventSettings
   } = useAppStore()
   
   const [isEditMode, setIsEditMode] = useState(false)
 
+  // Auto-open settings when requested by other parts of the app (one-time)
+  useEffect(() => {
+    if (openEventSettingsOnce) {
+      setIsEditMode(true)
+      // Clear the intent flag after opening
+      clearOpenEventSettings()
+    }
+  }, [openEventSettingsOnce])
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 overflow-hidden">
       <main 
         className="max-w-screen-sm mx-auto px-4 py-5"
         style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}

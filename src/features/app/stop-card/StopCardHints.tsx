@@ -59,7 +59,9 @@ const StopCardHints = memo(function StopCardHints({ stop, state, expanded }: Sto
   const shouldShowHints = (!state.done || expanded)
   const hintsToShow = stop.hints.slice(0, state.revealedHints)
   
-  console.log(`💡 HINTS SECTION: stopId=${stop.id}, shouldShowHints=${shouldShowHints}, hintsToShow=${hintsToShow.length}, state.done=${state.done}, expanded=${expanded}`)
+  console.log(`💡 HINTS SECTION: stopId=${stop.id}, shouldShowHints=${shouldShowHints}, hintsToShow=${hintsToShow.length}, state.done=${state.done}, expanded=${expanded}, revealedHints=${state.revealedHints}`)
+  console.log(`💡 HINTS ARRAY:`, stop.hints)
+  console.log(`💡 SELECTED HINTS:`, hintsToShow)
 
   if (!shouldShowHints) {
     return null
@@ -96,8 +98,10 @@ const StopCardHints = memo(function StopCardHints({ stop, state, expanded }: Sto
               style={{
                 backgroundColor: `${hintMetadata.categoryColor}10`,
                 borderColor: hintMetadata.categoryColor,
-                animation: `slideInFromLeft ${ANIMATIONS.hintReveal} ease-out ${hintIndex * 0.1}s forwards`,
-                opacity: 0
+                // DEBUG: Temporarily bypass animation to test visibility
+                opacity: 1, // Force visible for debugging
+                transform: 'translateX(0)', // Skip slide-in animation
+                transition: 'all 0.3s ease-out' // Simple transition instead
               }}
             >
               <div className='flex items-start justify-between gap-3'>

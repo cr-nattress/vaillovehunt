@@ -6,6 +6,7 @@ import StopCardMedia from './StopCardMedia'
 import StopCardActions from './StopCardActions'
 import StopCardCompletedMeta from './StopCardCompletedMeta'
 import { COLORS, ANIMATIONS } from './stopCard.tokens'
+import { useProgressStore } from '../../../store/progress.store'
 
 interface Stop {
   id: string
@@ -50,7 +51,14 @@ const StopCard = memo(function StopCard({
   revealNextHint,
   index
 }: StopCardProps) {
-  const { state, displayImage, isTransitioning, isUploading } = useStopCardState({
+  // Subscribe directly to the per-stop progress from the store to avoid stale props
+  const stopProgress = useProgressStore(s => s.progress[stop.id])
+  const state = stopProgress || { done: false, notes: '', photo: null, revealedHints: 1 }
+  
+  // DEBUG: Log state changes
+  console.log(`🃏 STOPCARD RENDER: stopId=${stop.id}, revealedHints=${state.revealedHints}, done=${state.done}`)
+  
+  const { displayImage, isTransitioning, isUploading } = useStopCardState({
     stop,
     progress,
     uploadingStops,
