@@ -603,9 +603,10 @@ export default function App() {
       <div className='min-h-screen text-slate-900 bg-gray-50'>
         {showSplash && (
           <SplashScreen
-            onSelectEvent={(evt) => {
+            onSelectEvent={(evt, teamName) => {
               if (evt.orgName) setLocationName(evt.orgName)
               if (evt.eventName) setEventName(evt.eventName)
+              if (teamName) setTeamName(teamName)
               navigate('event')
               setShowSplash(false)
               requestOpenEventSettings()

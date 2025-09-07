@@ -16,41 +16,39 @@ function formatDateYYYYMMDD(d: Date): string {
 }
 
 export async function fetchTodaysEvents(baseUrl: string = ''): Promise<OrgEvent[]> {
-  // Compute today in local browser time
-  const todayStr = formatDateYYYYMMDD(new Date())
-  const prefix = `events/${todayStr}/`
-  const url = `${baseUrl}/.netlify/functions/kv-list?prefix=${encodeURIComponent(prefix)}&includeValues=true`
-
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Accept': 'application/json'
+  // Return mock scavenger hunts occurring today
+  const mockEvents: OrgEvent[] = [
+    {
+      key: 'events/bhhs-vail',
+      orgSlug: 'bhhs',
+      orgName: 'BHHS',
+      eventName: 'Vail',
+      startAt: formatDateYYYYMMDD(new Date()),
+      endAt: formatDateYYYYMMDD(new Date()),
+      data: { description: 'BHHS Vail Scavenger Hunt' }
+    },
+    {
+      key: 'events/beaver-creek-sports-nottingham',
+      orgSlug: 'beaver-creek-sports',
+      orgName: 'Beaver Creek Sports',
+      eventName: 'Nottingham Hunt',
+      startAt: formatDateYYYYMMDD(new Date()),
+      endAt: formatDateYYYYMMDD(new Date()),
+      data: { description: 'Beaver Creek Sports Nottingham Hunt' }
+    },
+    {
+      key: 'events/ra-nelson-find-the-goat',
+      orgSlug: 'ra-nelson',
+      orgName: 'RA Nelson',
+      eventName: 'Find the goat',
+      startAt: formatDateYYYYMMDD(new Date()),
+      endAt: formatDateYYYYMMDD(new Date()),
+      data: { description: 'RA Nelson Find the goat Hunt' }
     }
-  })
+  ]
 
-  if (!res.ok) {
-    console.warn('Failed to fetch events list', res.status)
-    return []
-  }
-
-  const json = await res.json()
-  const data = json?.data || {}
-  const events: OrgEvent[] = Object.keys(data).map((key: string) => {
-    const value = data[key] || {}
-    // Expect key like events/YYYY-MM-DD/{orgSlug}.json
-    const parts = key.split('/')
-    const file = parts[parts.length - 1]
-    const orgSlug = file.replace(/\.json$/i, '')
-    return {
-      key,
-      orgSlug,
-      orgName: value.orgName || orgSlug,
-      eventName: value.eventName || todayStr,
-      startAt: value.startAt,
-      endAt: value.endAt,
-      data: value,
-    }
-  })
-
-  return events.sort((a, b) => a.orgName.localeCompare(b.orgName))
+  // Simulate async behavior
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
+  return mockEvents.sort((a, b) => a.orgName.localeCompare(b.orgName))
 }

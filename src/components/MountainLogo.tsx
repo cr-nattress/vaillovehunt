@@ -139,7 +139,7 @@ export default function MountainLogo({ size = 'md', className = '', animated = f
       </svg>
       
       {animated && (
-        <style jsx>{`
+        <style>{`
           .mountain-logo-animated {
             animation: gentle-glow 3s ease-in-out infinite alternate;
           }
