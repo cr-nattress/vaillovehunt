@@ -568,7 +568,7 @@ export default function App() {
         <>
         {currentPage === 'hunt' && (
         <div>
-        <main id="main-content" className='max-w-screen-sm mx-auto px-4 py-5' 
+        <main id="main-content" className='max-w-screen-sm mx-auto px-4 py-2' 
               role="main" 
               aria-label="Scavenger hunt main content"
               style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}>
@@ -637,7 +637,7 @@ export default function App() {
           id="current-tabpanel"
           aria-labelledby="current-tab"
           hidden={taskTab !== 'current'}
-          className="max-w-screen-sm mx-auto px-4 mt-6 space-y-4"
+          className="max-w-screen-sm mx-auto px-4 mt-3 space-y-2"
         >
           <StopsList
           stops={stops}
@@ -660,7 +660,7 @@ export default function App() {
           id="completed-tabpanel"
           aria-labelledby="completed-tab"
           hidden={taskTab !== 'completed'}
-          className="max-w-screen-sm mx-auto px-4 mt-6 space-y-4"
+          className="max-w-screen-sm mx-auto px-4 mt-3 space-y-2"
         >
           <StopsList
             stops={stops}
@@ -732,6 +732,9 @@ export default function App() {
         {/* Mobile Footer Navigation */}
         <FooterNav 
           activePage="challenges"
+          progressPercent={percent}
+          completeCount={completeCount}
+          totalStops={stops.length}
           onEventClick={() => {
             // Navigate to event page
             navigate('event')
@@ -750,7 +753,12 @@ export default function App() {
         
         {/* Feed Page */}
         {currentPage === 'feed' && (
-          <FeedPage onNavigate={navigate} />
+          <FeedPage 
+            onNavigate={navigate}
+            percent={percent}
+            completeCount={completeCount}
+            totalStops={stops.length}
+          />
         )}
 
         {/* Event Page */}

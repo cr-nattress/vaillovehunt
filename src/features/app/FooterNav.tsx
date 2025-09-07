@@ -61,6 +61,19 @@ export default function FooterNav({
       role="contentinfo"
       aria-label="Mobile navigation footer"
     >
+      {/* Progress Bar */}
+      {totalStops > 0 && (
+        <div className="h-1 bg-gray-200">
+          <div 
+            className="h-full transition-all duration-500 ease-out"
+            style={{
+              width: `${progressPercent}%`,
+              backgroundColor: 'var(--color-cabernet)'
+            }}
+          />
+        </div>
+      )}
+      
       <div className="border-t" style={{ borderTopColor: 'var(--color-light-grey)' }}>
         <nav 
           role="navigation" 

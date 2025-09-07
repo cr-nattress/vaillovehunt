@@ -8,9 +8,12 @@ import { useAppStore } from '../../../store/appStore'
 
 interface FeedPageProps {
   onNavigate: (page: PageType) => void
+  percent: number
+  completeCount: number
+  totalStops: number
 }
 
-export default function FeedPage({ onNavigate }: FeedPageProps) {
+export default function FeedPage({ onNavigate, percent, completeCount, totalStops }: FeedPageProps) {
   const { locationName, eventName, teamName } = useAppStore()
   const [posts, setPosts] = useState<FeedPost[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -60,7 +63,15 @@ export default function FeedPage({ onNavigate }: FeedPageProps) {
         borderBottomColor: 'var(--color-blush-pink)'
       }}>
         <div className='max-w-screen-sm mx-auto px-4 py-4 flex items-center justify-between'>
-          <h1 className='text-xl md:text-2xl font-semibold text-white'>Team Feed</h1>
+          <div className='flex items-center gap-3'>
+            <h1 className='text-xl md:text-2xl font-semibold text-white'>Team Feed</h1>
+            {percent === 100 && (
+              <div className='flex items-center gap-1 px-2 py-1 bg-white/20 rounded-full'>
+                <span className='text-xs'>🏆</span>
+                <span className='text-xs font-medium text-white'>Complete</span>
+              </div>
+            )}
+          </div>
           <button
             onClick={() => onNavigate('hunt')}
             className='p-3 rounded-lg transition-colors text-white hover:bg-white/10'
@@ -158,6 +169,9 @@ export default function FeedPage({ onNavigate }: FeedPageProps) {
       {/* Mobile Footer Navigation */}
       <FooterNav 
         activePage="social"
+        progressPercent={percent}
+        completeCount={completeCount}
+        totalStops={totalStops}
         onEventClick={() => {
           // Navigate to event page
           onNavigate('event')

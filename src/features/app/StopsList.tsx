@@ -83,10 +83,16 @@ export default function StopsList({
     activeStops.push(firstIncomplete)
   }
 
-  const revealNextHint = (stopId: string) => {
+  const handleRevealNextHint = (stopId: string) => {
+    console.log(`🔍 REVEAL HINT FUNCTION: stopId=${stopId}`)
     const state = progress[stopId] || { done: false, notes: '', photo: null, revealedHints: 1 }
     const stop = stops.find(s => s.id === stopId)
+    console.log(`🔍 Current state:`, state)
+    console.log(`🔍 Stop found:`, stop?.title)
+    console.log(`🔍 Can reveal? ${stop && state.revealedHints < stop.hints.length}`)
+    
     if (stop && state.revealedHints < stop.hints.length) {
+      console.log(`🔍 REVEALING HINT: ${state.revealedHints} -> ${state.revealedHints + 1}`)
       setProgress((p: any) => ({
         ...p,
         [stopId]: { ...state, revealedHints: state.revealedHints + 1 }
@@ -122,7 +128,7 @@ export default function StopsList({
           expanded={expandedStops[s.id] || false}
           uploadingStops={uploadingStops}
           transitioningStops={transitioningStops}
-          revealNextHint={() => revealNextHint(s.id)}
+          revealNextHint={() => handleRevealNextHint(s.id)}
           index={i}
         />
       ))}

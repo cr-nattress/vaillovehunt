@@ -239,6 +239,9 @@ export default function EventPage({
       {/* Mobile Footer Navigation */}
       <FooterNav 
         activePage="event"
+        progressPercent={percent}
+        completeCount={completeCount}
+        totalStops={totalStops}
         onEventClick={() => {
           // Already on event page
           console.log('Already on event page')
