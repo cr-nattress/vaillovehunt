@@ -17,6 +17,7 @@ import collageRouter from './collageRoute';
 import kvRouter from './kvRoute';
 import photoRouter from './photoRoute';
 import eventsRouter from './eventsRoute';
+import eventsRouterV2 from './eventsRouteV2';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -35,6 +36,9 @@ app.use('/api', collageRouter);
 app.use('/api', kvRouter);
 app.use('/api', photoRouter);
 app.use('/api', eventsRouter);
+
+// API V2 routes (new service layer)
+app.use('/api/v2', eventsRouterV2);
 
 // Health check
 app.get('/health', (req, res) => {
