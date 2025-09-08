@@ -1,4 +1,8 @@
 export const config = {
+  // Feature flags
+  ENABLE_BLOB_EVENTS: import.meta.env.VITE_ENABLE_BLOB_EVENTS === 'true' || false,
+  ENABLE_KV_EVENTS: import.meta.env.VITE_ENABLE_KV_EVENTS === 'true' || false,
+  
   // IP Geolocation fallback service
   VITE_IP_GEO_URL: import.meta.env.VITE_IP_GEO_URL || 'https://ipapi.co/json/',
   

@@ -13,7 +13,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run preview` - Preview production build
 
 ### Testing & Quality
-No test commands configured in this project currently.
+- `npm test` - Run test suite with Vitest
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Generate test coverage report
 
 ## Architecture
 
@@ -22,6 +24,12 @@ The application uses a **dual-write storage pattern** for data persistence:
 1. **DualWriteService** (`src/client/DualWriteService.js`) orchestrates both localStorage (immediate) and Netlify Blobs (async) writes
 2. **PhotoUploadService** (`src/client/PhotoUploadService.ts`) handles photo uploads with multi-tier fallback strategy
 3. **CollageService** (`src/client/CollageService.ts`) generates photo collages via Cloudinary transformations
+
+### New Data Model Services (v2)
+Feature-flagged blob-backed data architecture:
+1. **BlobService** (`src/services/BlobService.ts`) - Low-level Netlify Blobs abstraction with ETag support
+2. **OrgRegistryService** (`src/services/OrgRegistryService.ts`) - High-level CRUD operations for App/Org JSON
+3. **EventService** (`src/services/EventService.ts`) - Enhanced with blob-backed event fetching (feature flagged)
 
 ### State Management Flow
 ```
@@ -55,3 +63,15 @@ Required for full functionality:
 - `CLOUDINARY_API_SECRET`
 - `CLOUDINARY_UPLOAD_FOLDER` (default: "scavenger/entries")
 - `NETLIFY_BLOBS_STORE_NAME` (default: "vail-hunt-state")
+
+### Feature Flags (v2 Data Model)
+Control new blob-backed features:
+- `VITE_ENABLE_BLOB_EVENTS` - Enable blob-backed event fetching (default: false)
+- `VITE_ENABLE_KV_EVENTS` - Enable KV-backed events (default: false)
+
+### New Data Architecture
+The v2 data model implements a **dual JSON structure**:
+- **App JSON** (`app.json`) - Global registry with organization summaries and date index
+- **Org JSON** (`orgs/{orgSlug}.json`) - Per-organization hunt data and settings
+
+See `docs/NEW_DATA_MODEL.md` for detailed architecture documentation.

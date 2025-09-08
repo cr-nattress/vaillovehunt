@@ -1,4 +1,5 @@
 import React from 'react'
+import { useEventStore } from '../../store/event.store'
 import type { PageType } from '../../store/navigation.store'
 
 interface HeaderProps {
@@ -22,6 +23,7 @@ export default function Header({
   onToggleTips,
   onNavigate
 }: HeaderProps) {
+  const { locationName } = useEventStore()
   return (
     <header className='sticky top-0 z-20 backdrop-blur-md border-b' style={{
       backgroundColor: 'var(--color-cabernet)', 
@@ -54,12 +56,12 @@ export default function Header({
             <div className='min-w-0 flex-1'>
               {/* Desktop version */}
               <div className='hidden sm:block'>
-                <div className='text-sm font-bold text-white leading-tight'>BERKSHIRE HATHAWAY</div>
+                <div className='text-sm font-bold text-white leading-tight'>{locationName || 'BERKSHIRE HATHAWAY'}</div>
                 <div className='text-xs text-white/90 leading-tight'>HomeServices</div>
               </div>
               {/* Mobile version */}
               <div className='sm:hidden'>
-                <div className='text-sm font-bold text-white'>BHHS</div>
+                <div className='text-sm font-bold text-white'>{locationName || 'BHHS'}</div>
               </div>
             </div>
           </div>

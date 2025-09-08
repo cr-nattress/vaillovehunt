@@ -27,13 +27,13 @@ interface StateListResponse {
 const kvStore = new Map<string, any>();
 const kvIndexes = new Map<string, Set<string>>(); // For index support
 
-// GET /kv-get/:key - retrieve a value by key
+// GET /kv-get?key=... - retrieve a value by key
 export const kvGetHandler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { key } = req.params;
+    const key = req.query.key as string;
     
     if (!key) {
-      res.status(400).json({ error: 'Key parameter is required' });
+      res.status(400).json({ error: 'Key query parameter is required' });
       return;
     }
     
@@ -42,14 +42,19 @@ export const kvGetHandler = async (req: Request, res: Response): Promise<void> =
     const exists = kvStore.has(key);
     const value = exists ? kvStore.get(key) : null;
     
-    const response: StateGetResponse = {
-      key,
-      value,
-      exists
-    };
+    if (!exists) {
+      // Return error for non-existent keys to match expected BlobService behavior
+      res.status(404).json({
+        error: `Key ${key} not found`
+      });
+      return;
+    }
     
-    // Always return 200 - "not existing" is a valid state, not an error
-    res.json(response);
+    // Return format expected by BlobService: { data, etag }
+    res.json({
+      data: value,
+      etag: `etag-${key}-${Date.now()}` // Generate a simple etag
+    });
     
   } catch (error) {
     console.error('KV get error:', error);
@@ -63,39 +68,33 @@ export const kvGetHandler = async (req: Request, res: Response): Promise<void> =
 // POST /kv-upsert - upsert a key-value pair with optional indexes
 export const kvUpsertHandler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { key, value, indexes } = req.body;
+    const { key, value, expectedEtag } = req.body;
     
     if (!key) {
       res.status(400).json({ error: 'Key is required' });
       return;
     }
     
-    console.log(`💾 KV UPSERT: ${key}`, { hasValue: value !== undefined, indexes: indexes?.length || 0 });
+    console.log(`💾 KV UPSERT: ${key}`, { hasValue: value !== undefined, expectedEtag });
     
     const existed = kvStore.has(key);
+    
+    // For simplicity, ignore etag checking in development 
+    // In production, this would check etag for optimistic concurrency
     
     // Store the value
     kvStore.set(key, value);
     
-    // Handle indexes if provided
-    if (indexes && Array.isArray(indexes)) {
-      for (const index of indexes) {
-        if (index.key && index.member) {
-          if (!kvIndexes.has(index.key)) {
-            kvIndexes.set(index.key, new Set());
-          }
-          kvIndexes.get(index.key)!.add(index.member);
-        }
-      }
-    }
+    const newEtag = `etag-${key}-${Date.now()}`;
+    const timestamp = new Date().toISOString();
     
-    const response: StateSetResponse = {
+    // Return format expected by BlobService
+    res.json({
+      ok: true,
+      etag: newEtag,
       key,
-      action: existed ? 'updated' : 'created',
-      success: true
-    };
-    
-    res.json(response);
+      timestamp
+    });
     
   } catch (error) {
     console.error('KV upsert error:', error);
@@ -142,10 +141,10 @@ export const kvListHandler = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-// DELETE /kv-delete/:key - delete a key
+// DELETE /kv-delete?key=... - delete a key
 export const kvDeleteHandler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { key } = req.params;
+    const key = req.query.key as string;
     
     if (!key) {
       res.status(400).json({ error: 'Key parameter is required' });
@@ -186,9 +185,9 @@ export const kvDeleteHandler = async (req: Request, res: Response): Promise<void
 
 // Express router setup
 const router = express.Router();
-router.get('/kv-get/:key', kvGetHandler);
+router.get('/kv-get', kvGetHandler);
 router.post('/kv-upsert', kvUpsertHandler);
 router.get('/kv-list', kvListHandler);
-router.delete('/kv-delete/:key', kvDeleteHandler);
+router.delete('/kv-delete', kvDeleteHandler);
 
 export default router;
