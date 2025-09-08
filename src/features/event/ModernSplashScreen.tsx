@@ -3,6 +3,7 @@ import { fetchTodaysEvents, OrgEvent } from '../../services/EventService'
 import MountainLogo from '../../components/MountainLogo'
 import { slugify } from '../../utils/slug'
 import { orgRegistryService } from '../../services/OrgRegistryService'
+import { MediaUploadService } from '../../client/MediaUploadService'
 import { useToastActions } from '../notifications/ToastProvider'
 
 interface ModernSplashScreenProps {
@@ -57,10 +58,82 @@ export default function ModernSplashScreen({ onSelectEvent, onSetupNew, onClose 
     id: string
     title: string
     hints: string[]
-    image?: File
+    media?: File
+    mediaType?: 'image' | 'video'
   }[]>([])
   const [stepsErrors, setStepsErrors] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Media validation constants
+  const MAX_IMAGE_SIZE = 12 * 1024 * 1024 // 12MB
+  const MAX_VIDEO_SIZE = 200 * 1024 * 1024 // 200MB
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+  const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime']
+
+  // Media validation functions
+  const isValidMediaFile = (file: File): { isValid: boolean; error?: string; mediaType?: 'image' | 'video' } => {
+    if (!file) return { isValid: false, error: 'No file provided' }
+
+    const isImage = ALLOWED_IMAGE_TYPES.includes(file.type)
+    const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type)
+
+    if (!isImage && !isVideo) {
+      return { isValid: false, error: 'File must be an image or video' }
+    }
+
+    const mediaType = isImage ? 'image' : 'video'
+    const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE
+    const sizeLimit = isImage ? '12MB' : '200MB'
+
+    if (file.size > maxSize) {
+      return { isValid: false, error: `File size must be under ${sizeLimit}` }
+    }
+
+    return { isValid: true, mediaType }
+  }
+
+  // Media preview component
+  const MediaPreview = ({ file, onRemove }: { file: File, onRemove: () => void }) => {
+    const isVideo = file.type.startsWith('video/')
+    const fileUrl = URL.createObjectURL(file)
+    
+    return (
+      <div className="relative">
+        {isVideo ? (
+          <video 
+            src={fileUrl}
+            className="w-20 h-20 object-cover rounded-lg border border-white/20"
+            controls={false}
+            muted
+            onLoadedMetadata={(e) => {
+              // Auto-generate poster by seeking to 1 second
+              const video = e.target as HTMLVideoElement
+              video.currentTime = 1
+            }}
+          />
+        ) : (
+          <img 
+            src={fileUrl}
+            alt="Step preview"
+            className="w-20 h-20 object-cover rounded-lg border border-white/20"
+          />
+        )}
+        <div className="absolute -top-1 -right-1">
+          <button
+            type="button"
+            onClick={onRemove}
+            className="w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 text-white text-xs flex items-center justify-center transition-colors"
+            aria-label="Remove media"
+          >
+            ×
+          </button>
+        </div>
+        <div className="mt-1 text-xs text-white/60 text-center">
+          {isVideo ? '🎥' : '🖼️'} {(file.size / 1024 / 1024).toFixed(1)}MB
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     let mounted = true
@@ -268,11 +341,32 @@ export default function ModernSplashScreen({ onSelectEvent, onSetupNew, onClose 
     ))
   }
 
-  const updateStepImage = (stepIndex: number, file: File | null) => {
+  const updateStepMedia = (stepIndex: number, file: File | null) => {
+    if (!file) {
+      // Clear media
+      setStepsData(prev => prev.map((step, i) => 
+        i === stepIndex ? {
+          ...step,
+          media: undefined,
+          mediaType: undefined
+        } : step
+      ))
+      return
+    }
+
+    // Validate file
+    const validation = isValidMediaFile(file)
+    if (!validation.isValid) {
+      showWarningToast(validation.error || 'Invalid file', { duration: 4000 })
+      return
+    }
+
+    // Update step with validated media
     setStepsData(prev => prev.map((step, i) => 
       i === stepIndex ? {
         ...step,
-        image: file || undefined
+        media: file,
+        mediaType: validation.mediaType
       } : step
     ))
   }
@@ -416,51 +510,51 @@ export default function ModernSplashScreen({ onSelectEvent, onSetupNew, onClose 
     if (validateHuntForm() && validateStepsForm()) {
       setIsSubmitting(true)
       try {
-      const orgSlug = slugify(orgFormData.organizationName)
-      const createdAt = new Date().toISOString()
-      const createdBy = `${orgFormData.firstName} ${orgFormData.lastName}`
-      
-      console.log('🎯 ModernSplashScreen: Creating new hunt and organization:', {
-        orgName: orgFormData.organizationName,
-        huntName: huntFormData.huntName,
-        huntDate: huntFormData.huntDate,
-        orgSlug,
-        createdBy,
-        createdAt,
-        contactDetails: {
-          firstName: orgFormData.firstName,
-          lastName: orgFormData.lastName,
-          email: orgFormData.email
-        }
-      })
-      
-      // Create the event object for navigation
-      const newEvent: OrgEvent = {
-        key: `events/${huntFormData.huntDate}/${orgSlug}`,
-        orgSlug,
-        orgName: orgFormData.organizationName,
-        eventName: huntFormData.huntName,
-        startAt: huntFormData.huntDate,
-        endAt: huntFormData.huntDate,
-        data: { 
-          description: `${huntFormData.huntName} - ${orgFormData.organizationName}`,
+        const orgSlug = slugify(orgFormData.organizationName)
+        const createdAt = new Date().toISOString()
+        const createdBy = `${orgFormData.firstName} ${orgFormData.lastName}`
+        
+        console.log('🎯 ModernSplashScreen: Creating new hunt and organization:', {
+          orgName: orgFormData.organizationName,
+          huntName: huntFormData.huntName,
+          huntDate: huntFormData.huntDate,
+          orgSlug,
           createdBy,
-          createdByEmail: orgFormData.email,
-          createdAt
+          createdAt,
+          contactDetails: {
+            firstName: orgFormData.firstName,
+            lastName: orgFormData.lastName,
+            email: orgFormData.email
+          }
+        })
+        
+        // Create the event object for navigation
+        const newEvent: OrgEvent = {
+          key: `events/${huntFormData.huntDate}/${orgSlug}`,
+          orgSlug,
+          orgName: orgFormData.organizationName,
+          eventName: huntFormData.huntName,
+          startAt: huntFormData.huntDate,
+          endAt: huntFormData.huntDate,
+          data: { 
+            description: `${huntFormData.huntName} - ${orgFormData.organizationName}`,
+            createdBy,
+            createdByEmail: orgFormData.email,
+            createdAt
+          }
         }
-      }
-      
-      console.log('🚀 ModernSplashScreen: Created event object for navigation:', newEvent)
-      
-      // Navigate immediately (non-blocking)
-      onSelectEvent(newEvent)
-      
-      // Persist to blob storage in background (fire-and-forget)
-      console.log('🔄 ModernSplashScreen: Starting background blob persistence...')
-      persistHuntToBlobs(orgSlug, createdBy, createdAt).catch(error => {
-        console.error('❌ ModernSplashScreen: Background persistence failed:', error)
-        showWarningToast('Hunt created successfully, but saving to storage failed', { duration: 6000 })
-      })
+        
+        console.log('🚀 ModernSplashScreen: Created event object for navigation:', newEvent)
+        
+        // Navigate immediately (non-blocking)
+        onSelectEvent(newEvent)
+        
+        // Persist to blob storage in background (fire-and-forget)
+        console.log('🔄 ModernSplashScreen: Starting background blob persistence...')
+        persistHuntToBlobs(orgSlug, createdBy, createdAt).catch(error => {
+          console.error('❌ ModernSplashScreen: Background persistence failed:', error)
+          showWarningToast('Hunt created successfully, but saving to storage failed', { duration: 6000 })
+        })
       } catch (error) {
         console.error('❌ ModernSplashScreen: Failed to create hunt:', error)
         showWarningToast('Failed to create hunt. Please try again.', { duration: 6000 })
@@ -544,23 +638,53 @@ export default function ModernSplashScreen({ onSelectEvent, onSetupNew, onClose 
         huntLocation
       )
       
+      // TODO: Upload media files before creating stops
+      // In a full implementation, we would:
+      // 1. Loop through stepsData and upload any step.media files
+      // 2. Use MediaUploadService.uploadMedia() for each file
+      // 3. Store the returned URLs in the assets array
+      // 4. Handle upload failures gracefully (warn user but continue)
+      
       // Convert steps to hunt stops
       console.log('📍 ModernSplashScreen: Converting steps to hunt stops...')
-      const stops = stepsData.map((step, index) => ({
-        id: `stop-${index + 1}`,
-        title: step.title,
-        lat: 0, // Placeholder - will be set when locations are assigned
-        lng: 0, // Placeholder - will be set when locations are assigned 
-        radiusMeters: 50,
-        description: `Step ${index + 1}: ${step.title}`,
-        hints: step.hints.filter(h => h.trim()).map(text => ({ text })),
-        requirements: [{ type: 'photo' as const, required: true }],
-        assets: [], // Images would be converted to assets in future enhancement
-        audit: {
-          createdBy,
-          createdAt: new Date().toISOString()
+      console.log('🎬 Found', stepsData.filter(s => s.media).length, 'steps with media files')
+      const stops = stepsData.map((step, index) => {
+        // Prepare assets array for media content
+        const assets = []
+        if (step.media && step.mediaType) {
+          // Note: In a full implementation, we would upload the media first
+          // and use the returned URL. For now, we'll create a placeholder
+          const assetType = step.mediaType === 'video' ? 'video' : 'image'
+          assets.push({
+            type: assetType as 'image' | 'video' | 'audio',
+            url: '', // Placeholder - would be filled after media upload
+            caption: `${step.mediaType === 'video' ? 'Video' : 'Image'} for ${step.title}`
+          })
         }
-      }))
+
+        // Set requirements based on media type
+        const requirements = [{ 
+          type: (step.mediaType || 'photo') as 'photo' | 'video' | 'text', 
+          required: true,
+          description: step.mediaType === 'video' ? 'Record a video at this location' : 'Take a photo at this location'
+        }]
+
+        return {
+          id: `stop-${index + 1}`,
+          title: step.title,
+          lat: 0, // Placeholder - will be set when locations are assigned
+          lng: 0, // Placeholder - will be set when locations are assigned 
+          radiusMeters: 50,
+          description: `Step ${index + 1}: ${step.title}`,
+          hints: step.hints.filter(h => h.trim()).map(text => ({ text })),
+          requirements,
+          assets,
+          audit: {
+            createdBy,
+            createdAt: new Date().toISOString()
+          }
+        }
+      })
       
       // Add stops to hunt
       newHunt.stops = stops
@@ -1380,29 +1504,31 @@ export default function ModernSplashScreen({ onSelectEvent, onSetupNew, onClose 
                               </div>
                             </div>
 
-                            {/* Optional Image Upload */}
+                            {/* Optional Media Upload (Image or Video) */}
                             <div>
-                              <label className="text-sm text-white/80 mb-2 block">Optional Image</label>
+                              <label className="text-sm text-white/80 mb-2 block">Optional Media</label>
                               <div className="flex items-center gap-3">
                                 <input
                                   type="file"
-                                  accept="image/*"
-                                  onChange={(e) => updateStepImage(index, e.target.files?.[0] || null)}
+                                  accept="image/*,video/*"
+                                  onChange={(e) => updateStepMedia(index, e.target.files?.[0] || null)}
                                   className="hidden"
-                                  id={`step-image-${index}`}
+                                  id={`step-media-${index}`}
                                 />
                                 <label
-                                  htmlFor={`step-image-${index}`}
+                                  htmlFor={`step-media-${index}`}
                                   className="cursor-pointer bg-white/10 hover:bg-white/20 border border-white/20 text-white px-3 py-2 rounded-lg text-sm transition-colors"
                                 >
-                                  {step.image ? 'Change Image' : 'Add Image'}
+                                  {step.media ? 'Change Media' : 'Add Image/Video'}
                                 </label>
-                                {step.image && (
+                                {step.media && (
                                   <>
-                                    <span className="text-white/70 text-sm">{step.image.name}</span>
+                                    <span className="text-white/70 text-sm">
+                                      {step.mediaType === 'video' ? '🎥' : '🖼️'} {step.media.name}
+                                    </span>
                                     <button
                                       type="button"
-                                      onClick={() => updateStepImage(index, null)}
+                                      onClick={() => updateStepMedia(index, null)}
                                       className="text-red-400 hover:text-red-300 text-sm"
                                     >
                                       Clear
@@ -1410,15 +1536,18 @@ export default function ModernSplashScreen({ onSelectEvent, onSetupNew, onClose 
                                   </>
                                 )}
                               </div>
-                              {step.image && (
-                                <div className="mt-2">
-                                  <img
-                                    src={URL.createObjectURL(step.image)}
-                                    alt="Step preview"
-                                    className="w-20 h-20 object-cover rounded-lg border border-white/20"
+                              {step.media && (
+                                <div className="mt-3">
+                                  <MediaPreview 
+                                    file={step.media} 
+                                    onRemove={() => updateStepMedia(index, null)} 
                                   />
                                 </div>
                               )}
+                              <div className="mt-2 text-xs text-white/50">
+                                Images: JPEG, PNG, GIF, WebP (max 12MB)<br/>
+                                Videos: MP4, WebM, OGG, QuickTime (max 200MB)
+                              </div>
                             </div>
 
                             {/* Step-specific Error */}
@@ -1492,7 +1621,7 @@ export default function ModernSplashScreen({ onSelectEvent, onSetupNew, onClose 
               <div className="text-center">
                 <div className="bg-white/5 border border-white/10 rounded-lg p-3">
                   <p className="text-xs text-white/60">
-                    Create 1-10 steps that participants will complete. Each step needs a title and at least one hint. Images are optional but help guide participants.
+                    Create 1-10 steps that participants will complete. Each step needs a title and at least one hint. Images and videos are optional but help guide participants.
                   </p>
                 </div>
               </div>
@@ -1555,7 +1684,11 @@ export default function ModernSplashScreen({ onSelectEvent, onSetupNew, onClose 
                             <div className="text-white font-medium text-sm mb-1">{step.title}</div>
                             <div className="text-white/60 text-xs mb-2">
                               {step.hints.filter(h => h.trim()).length} hint{step.hints.filter(h => h.trim()).length !== 1 ? 's' : ''}
-                              {step.image && <span className="ml-2">• Has image</span>}
+                              {step.media && (
+                                <span className="ml-2">
+                                  • Has {step.mediaType === 'video' ? 'video 🎥' : 'image 🖼️'}
+                                </span>
+                              )}
                             </div>
                             <div className="space-y-1">
                               {step.hints.filter(h => h.trim()).map((hint, hintIndex) => (

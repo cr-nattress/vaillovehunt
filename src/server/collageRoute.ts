@@ -184,6 +184,123 @@ export const createCollageHandler = async (req: Request, res: Response): Promise
 };
 
 // Photo upload handler for individual photos
+// Video upload handler with poster generation
+export const videoUploadHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('🎬 VideoUploadHandler called');
+    console.log('  Method:', req.method);
+    console.log('  Headers:', req.headers);
+    console.log('  Body keys:', Object.keys(req.body));
+    console.log('  Files:', req.file ? 'FILE PRESENT' : 'NO FILE');
+    
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: 'No video file provided' });
+      return;
+    }
+
+    // Validate video file
+    if (!file.mimetype.startsWith('video/')) {
+      res.status(400).json({ error: 'File must be a video' });
+      return;
+    }
+
+    const { locationTitle, sessionId, teamName, locationName, eventName } = req.body;
+    
+    console.log('📦 Parsed form data:');
+    console.log('  File:', file.originalname, `(${file.size} bytes)`);
+    console.log('  Location Title:', locationTitle);
+    console.log('  Session ID:', sessionId);
+    console.log('  Team Name:', teamName);
+    console.log('  Location Name:', locationName);
+    console.log('  Event Name:', eventName);
+
+    if (!locationTitle || !sessionId) {
+      res.status(400).json({ error: 'Location title and session ID are required' });
+      return;
+    }
+
+    // Generate slug and public ID
+    const locationSlug = slugify(locationTitle);
+    const timestamp = Date.now();
+    const publicId = `${sessionId}/${locationSlug}_${timestamp}`;
+    
+    // Generate tags for organization
+    const tags = ['vail-scavenger', 'individual-video'];
+    if (teamName) {
+      tags.push(`team:${teamName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`);
+    }
+    if (locationName) {
+      tags.push(`location:${locationName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`);
+    }
+    
+    console.log('🎥 Uploading video to Cloudinary with publicId:', publicId);
+    console.log('🏷️ Using tags:', tags);
+    
+    const uploadResult = await new Promise<{publicId: string, secureUrl: string, posterUrl?: string}>((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          folder: process.env.CLOUDINARY_UPLOAD_FOLDER || 'scavenger/entries',
+          tags: tags,
+          public_id: publicId,
+          context: { 
+            team_name: teamName || '',
+            company_name: locationName || '',
+            session_id: sessionId,
+            upload_time: new Date().toISOString(),
+            scavenger_hunt_name: locationName || 'Vail Hunt',
+            location_slug: locationSlug,
+            upload_type: 'individual_video',
+            event_name: eventName || ''
+          },
+          resource_type: 'video',
+          quality: 'auto:good',
+          // Generate poster/thumbnail automatically
+          eager: [
+            { format: 'jpg', quality: 'auto:good', transformation: [{ fetch_format: 'auto' }] }, // poster
+            { format: 'jpg', width: 200, height: 200, crop: 'fill', quality: 'auto:good' } // thumbnail
+          ],
+          eager_async: false // Generate transformations synchronously
+        },
+        (error, result) => {
+          if (error) {
+            console.error('☁️ Cloudinary video upload error:', error);
+            reject(error);
+          } else {
+            console.log('✅ Cloudinary video upload successful:', result?.public_id);
+            resolve({
+              publicId: result!.public_id,
+              secureUrl: result!.secure_url,
+              posterUrl: result!.eager?.[0]?.secure_url // First eager transformation (poster)
+            });
+          }
+        }
+      ).end(file.buffer);
+    });
+
+    // Prepare response
+    const response = {
+      photoUrl: uploadResult.secureUrl, // Keep same field name for compatibility
+      videoUrl: uploadResult.secureUrl,
+      posterUrl: uploadResult.posterUrl,
+      publicId: uploadResult.publicId,
+      locationSlug,
+      title: locationTitle,
+      uploadedAt: new Date().toISOString()
+    };
+
+    console.log('📊 Video upload successful, sending response:', response);
+    res.json(response);
+
+  } catch (error) {
+    console.error('💥 Video upload error:', error);
+    res.status(500).json({ 
+      error: 'Failed to upload video',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
 export const photoUploadHandler = async (req: Request, res: Response): Promise<void> => {
   console.log('📸 PhotoUploadHandler called');
   console.log('  Method:', req.method);
@@ -316,5 +433,6 @@ export const photoUploadHandler = async (req: Request, res: Response): Promise<v
 const router = express.Router();
 router.post('/collage', upload.array('photos[]'), createCollageHandler);
 router.post('/photo-upload', upload.single('photo'), photoUploadHandler);
+router.post('/video-upload', upload.single('media'), videoUploadHandler);
 
 export default router;

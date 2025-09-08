@@ -6,16 +6,15 @@
 import { blobService, BlobResult } from './BlobService'
 import { 
   AppData, 
-  AppDataSchema, 
   OrganizationSummary,
   HuntIndexEntry 
 } from '../types/appData.schemas'
 import { 
   OrgData, 
-  OrgDataSchema, 
   Hunt 
 } from '../types/orgData.schemas'
 import { slugify } from '../utils/slug'
+import { validateAppData, validateOrgData, type ValidationOptions } from '../schemas/validation/index'
 
 export class OrgRegistryService {
   private static instance: OrgRegistryService
@@ -52,25 +51,43 @@ export class OrgRegistryService {
   }
 
   /**
-   * Load App JSON data
+   * Load App JSON data with comprehensive validation and migration
    */
   async loadApp(): Promise<BlobResult<AppData>> {
     try {
-      const result = await blobService.readJson<AppData>(OrgRegistryService.APP_KEY)
+      const result = await blobService.readJson<any>(OrgRegistryService.APP_KEY)
       
-      // Validate the data structure
-      const validatedData = AppDataSchema.parse(result.data)
+      // Use comprehensive validation with migration
+      const validation = await validateAppData(result.data, { 
+        autoMigrate: true,
+        includeWarnings: true 
+      })
+      
+      if (!validation.success) {
+        console.error('❌ App JSON validation failed:', validation.errors)
+        throw new Error(`App JSON validation failed: ${validation.errors?.map(e => e.message).join(', ')}`)
+      }
+
+      if (validation.migrationApplied) {
+        console.log('🔄 App JSON migration applied:', validation.migrationDetails)
+        // Auto-save migrated data back to blob
+        await blobService.writeJson(OrgRegistryService.APP_KEY, validation.data, result.etag)
+      }
+
+      if (validation.warnings?.length) {
+        console.warn('⚠️  App JSON validation warnings:', validation.warnings)
+      }
       
       return {
-        data: validatedData,
+        data: validation.data!,
         etag: result.etag
       }
     } catch (error) {
-      console.warn(`App JSON not found or invalid, returning default structure`)
+      console.warn(`App JSON not found or invalid, returning default structure:`, error)
       
-      // Return a default app structure
+      // Return a default app structure with latest schema version
       const defaultApp: AppData = {
-        schemaVersion: '1.0.0',
+        schemaVersion: '1.2.0', // Latest version
         updatedAt: new Date().toISOString(),
         app: {
           metadata: {
@@ -81,7 +98,9 @@ export class OrgRegistryService {
             enableKVEvents: false,
             enableBlobEvents: false,
             enablePhotoUpload: true,
-            enableMapPage: false
+            enableMapPage: false,
+            enableVideoUpload: true,
+            enableAdvancedValidation: false
           },
           defaults: {
             timezone: 'America/Denver',
@@ -96,18 +115,36 @@ export class OrgRegistryService {
   }
 
   /**
-   * Load Org JSON data
+   * Load Org JSON data with comprehensive validation and migration
    */
   async loadOrg(orgSlug: string): Promise<BlobResult<OrgData>> {
     try {
       const key = OrgRegistryService.getOrgKey(orgSlug)
-      const result = await blobService.readJson<OrgData>(key)
+      const result = await blobService.readJson<any>(key)
       
-      // Validate the data structure
-      const validatedData = OrgDataSchema.parse(result.data)
+      // Use comprehensive validation with migration
+      const validation = await validateOrgData(result.data, { 
+        autoMigrate: true,
+        includeWarnings: true 
+      })
+      
+      if (!validation.success) {
+        console.error(`❌ Org JSON validation failed for ${orgSlug}:`, validation.errors)
+        throw new Error(`Org JSON validation failed: ${validation.errors?.map(e => e.message).join(', ')}`)
+      }
+
+      if (validation.migrationApplied) {
+        console.log(`🔄 Org JSON migration applied for ${orgSlug}:`, validation.migrationDetails)
+        // Auto-save migrated data back to blob
+        await blobService.writeJson(key, validation.data, result.etag)
+      }
+
+      if (validation.warnings?.length) {
+        console.warn(`⚠️  Org JSON validation warnings for ${orgSlug}:`, validation.warnings)
+      }
       
       return {
-        data: validatedData,
+        data: validation.data!,
         etag: result.etag
       }
     } catch (error) {
@@ -117,7 +154,7 @@ export class OrgRegistryService {
   }
 
   /**
-   * Upsert App JSON data
+   * Upsert App JSON data with comprehensive validation
    */
   async upsertApp(appData: AppData, expectedEtag?: string): Promise<string | undefined> {
     try {
@@ -127,8 +164,15 @@ export class OrgRegistryService {
         updatedAt: new Date().toISOString()
       }
       
-      // Validate before saving
-      const validatedData = AppDataSchema.parse(updatedData)
+      // Comprehensive validation
+      const validation = await validateAppData(updatedData, { strict: true })
+      
+      if (!validation.success) {
+        console.error('❌ App JSON validation failed before upsert:', validation.errors)
+        throw new Error(`App JSON validation failed: ${validation.errors?.map(e => e.message).join(', ')}`)
+      }
+
+      const validatedData = validation.data!
       
       console.log('📝 OrgRegistryService: Writing App JSON:', {
         schemaVersion: validatedData.schemaVersion,
@@ -155,7 +199,7 @@ export class OrgRegistryService {
   }
 
   /**
-   * Upsert Org JSON data
+   * Upsert Org JSON data with comprehensive validation
    */
   async upsertOrg(orgData: OrgData, orgSlug: string, expectedEtag?: string): Promise<string | undefined> {
     try {
@@ -167,8 +211,15 @@ export class OrgRegistryService {
         updatedAt: new Date().toISOString()
       }
       
-      // Validate before saving
-      const validatedData = OrgDataSchema.parse(updatedData)
+      // Comprehensive validation
+      const validation = await validateOrgData(updatedData, { strict: true })
+      
+      if (!validation.success) {
+        console.error(`❌ Org JSON validation failed for ${orgSlug}:`, validation.errors)
+        throw new Error(`Org JSON validation failed: ${validation.errors?.map(e => e.message).join(', ')}`)
+      }
+
+      const validatedData = validation.data!
       
       console.log(`📝 OrgRegistryService: Writing Org JSON for ${orgSlug}:`, {
         orgSlug: validatedData.org.orgSlug,
