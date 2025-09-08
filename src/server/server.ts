@@ -7,17 +7,33 @@ import path from 'path';
 // Get current file path for proper .env resolution
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const envPath = path.join(__dirname, '../../.env');
+const projectRoot = path.join(__dirname, '../..');
 
+// Load .env.local first (has precedence), then .env as fallback
+const envLocalPath = path.join(projectRoot, '.env.local');
+const envPath = path.join(projectRoot, '.env');
+
+console.log('🔍 Loading environment files:');
+console.log('  .env.local:', envLocalPath);
+console.log('  .env:', envPath);
+
+dotenv.config({ path: envLocalPath });
 dotenv.config({ path: envPath });
+
+console.log('🔑 RESEND_API_KEY loaded:', process.env.RESEND_API_KEY ? 'YES' : 'NO');
+console.log('✅ Environment loaded, now importing services...');
+// Force server restart to pick up environment changes
 
 import express from 'express';
 import cors from 'cors';
+import morgan from 'morgan';
+import fs from 'fs';
 import collageRouter from './collageRoute';
 import kvRouter from './kvRoute';
 import photoRouter from './photoRoute';
 import eventsRouter from './eventsRoute';
 import eventsRouterV2 from './eventsRouteV2';
+import authRouter from './authRoute';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -26,6 +42,20 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Request logging to file (logs/access.log)
+try {
+  const logsDir = path.join(projectRoot, 'logs');
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+  const accessLogPath = path.join(logsDir, 'access.log');
+  const accessLogStream = fs.createWriteStream(accessLogPath, { flags: 'a' });
+  app.use(morgan('combined', { stream: accessLogStream }));
+  console.log(`📝 HTTP access logs writing to: ${accessLogPath}`);
+} catch (e) {
+  console.warn('⚠️  Failed to initialize access log stream:', e instanceof Error ? e.message : e);
+}
 
 // Serve static files from public directory
 const publicPath = path.join(__dirname, '../../public');
@@ -36,6 +66,7 @@ app.use('/api', collageRouter);
 app.use('/api', kvRouter);
 app.use('/api', photoRouter);
 app.use('/api', eventsRouter);
+app.use('/api/auth', authRouter);
 
 // API V2 routes (new service layer)
 app.use('/api/v2', eventsRouterV2);
