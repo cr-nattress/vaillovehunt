@@ -55,7 +55,8 @@ export default function StopCardActions({
     try {
       setUploadError(null)
       await onUpload(stop.id, file)
-      success(`Photo uploaded successfully for ${stop.title}!`)
+      const mediaType = file.type.startsWith('video/') ? 'Video' : 'Photo'
+      success(`${mediaType} uploaded successfully for ${stop.title}!`)
     } catch (err) {
       // Extract meaningful server error if available
       let errorMessage = 'Upload failed. Please try again.'
@@ -78,14 +79,27 @@ export default function StopCardActions({
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file && file.type.startsWith('image/')) {
+    if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
+      // Validate file size limits
+      const isVideo = file.type.startsWith('video/')
+      const maxSize = isVideo ? 200 * 1024 * 1024 : 12 * 1024 * 1024 // 200MB video, 12MB image
+      const sizeLimit = isVideo ? '200MB' : '12MB'
+      
+      if (file.size > maxSize) {
+        error(`File size must be under ${sizeLimit}`)
+        e.target.value = ''
+        return
+      }
+      
       setSelectedFile(file)
       // Phase 1: Use selectPhoto for immediate preview without server call
       selectPhoto(stop.id, file)
+    } else {
+      error('Please select an image or video file')
     }
     // Clear the input so the same file can be selected again if there's an error
     e.target.value = ''
-  }, [selectPhoto, stop.id])
+  }, [selectPhoto, stop.id, error])
 
   const handleRetry = useCallback(() => {
     if (selectedFile) {
@@ -97,7 +111,7 @@ export default function StopCardActions({
     <div className='mt-3 space-y-2'>
       <input 
         type='file' 
-        accept='image/*' 
+        accept='image/*,video/*' 
         onChange={handleFileChange}
         className='sr-only'
         id={`file-${stop.id}`}
@@ -122,7 +136,7 @@ export default function StopCardActions({
                 : 'hover:scale-[1.02] active:scale-[0.98] hover:shadow-xl'
             }`}
             style={{ backgroundColor: isUploading ? COLORS.warmGrey : COLORS.cabernet }}
-            aria-label={isUploading ? 'Saving photo' : `Save photo for ${stop.title}`}
+            aria-label={isUploading ? 'Saving media' : `Save media for ${stop.title}`}
           >
             {isUploading ? (
               <>
@@ -130,14 +144,14 @@ export default function StopCardActions({
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Saving Photo...
+                Saving Media...
               </>
             ) : (
               <>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                Save Photo
+                Save Media
               </>
             )}
           </button>
@@ -156,7 +170,7 @@ export default function StopCardActions({
               }}
               tabIndex={0}
               role="button"
-              aria-label={`Change photo for ${stop.title}`}
+              aria-label={`Change media for ${stop.title}`}
             >
               🔄 Change
             </label>
@@ -171,7 +185,7 @@ export default function StopCardActions({
                 setUploadError(null)
               }}
               className='flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 focus:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 focus:outline-none text-white text-sm font-medium rounded-lg transition-colors duration-200'
-              aria-label={`Cancel photo selection for ${stop.title}`}
+              aria-label={`Cancel media selection for ${stop.title}`}
             >
               ❌ Cancel
             </button>
@@ -202,7 +216,7 @@ export default function StopCardActions({
           tabIndex={0}
           role="button"
           aria-disabled={isUploading}
-          aria-label={isUploading ? 'Processing photo upload' : `Upload photo for ${stop.title}`}
+          aria-label={isUploading ? 'Processing media upload' : `Upload photo or video for ${stop.title}`}
         >
           {isUploading ? (
             <>
@@ -210,7 +224,7 @@ export default function StopCardActions({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Uploading Photo...
+              Uploading Media...
             </>
           ) : (
             <>
@@ -218,7 +232,7 @@ export default function StopCardActions({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2-2V9z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Upload Photo
+              Upload Photo/Video
             </>
           )}
         </label>
@@ -226,7 +240,7 @@ export default function StopCardActions({
       
       {/* Microcopy */}
       <p className='text-xs text-center text-slate-500 px-2'>
-        Take a creative selfie together at this location to complete the challenge
+        Take a creative photo or video together at this location to complete the challenge
       </p>
       
       {/* Error state with retry */}
@@ -261,7 +275,7 @@ export default function StopCardActions({
       )}
       
       <div id={`upload-help-${stop.id}`} className="sr-only">
-        Select an image file to upload as your photo for this stop
+        Select an image or video file to upload as your media for this stop
       </div>
     </div>
   )

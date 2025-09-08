@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useMemo} from 'react'
 import { CollageService } from './client/CollageService'
-import { PhotoUploadService } from './client/PhotoUploadService'
+import { MediaUploadService } from './client/MediaUploadService'
 import { PhotoService } from './services/PhotoService'
 import { DualWriteService } from './client/DualWriteService'
 import { seedInitialData } from './services/SeedService'
@@ -329,15 +329,16 @@ export default function App() {
         // Upload to server/Cloudinary
         console.log(`📸 Uploading new photo for ${stop.title}`)
         
-        const uploadResponse = await PhotoUploadService.uploadPhotoWithResize(
+        const uploadResponse = await MediaUploadService.uploadMedia(
           file, 
           stop.title, 
           sessionId,
-          1600, // maxWidth
-          0.8,  // quality
-          effectiveTeamName,
-          locationName,
-          eventName
+          {
+            resourceType: file.type.startsWith('video/') ? 'video' : 'image',
+            teamName: effectiveTeamName,
+            locationName,
+            eventName
+          }
         )
         
         console.log(`💾 UPLOAD RESPONSE:`, uploadResponse)
@@ -529,7 +530,8 @@ export default function App() {
       // Reset progress data (team-specific)
       resetProgress()
       
-      // Clear team photos (shared among team members)
+      // Clear team photos (shared among team members) 
+      const { PhotoUploadService } = await import('./client/PhotoUploadService')
       await PhotoUploadService.clearTeamPhotos(teamName, locationName, eventName)
       
       // Clear UI state (these are shared but will be regenerated)
