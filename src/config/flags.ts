@@ -119,13 +119,13 @@ function loadFeatureFlags(): FeatureFlags {
       enableEtagConcurrency: getEnvVar('VITE_ENABLE_ETAG_CONCURRENCY') === 'true' || false,
       
       // Storage Migration: Enable Azure Table Storage (default: false, migration phase 1+)
-      enableAzureTables: getEnvVar('VITE_ENABLE_AZURE_TABLES') === 'true' || getEnvVar('ENABLE_AZURE_TABLES') === 'true' || false,
+      enableAzureTables: getEnvVar('VITE_ENABLE_AZURE_TABLES') === 'true' || getEnvVar('ENABLE_AZURE_TABLES') === 'true' || true, // Default: true (migration from Netlify Blobs)
       
       // Storage Migration: Dual-write to Azure during transition (default: false, migration phase 4)
       dualWriteToAzure: getEnvVar('VITE_DUAL_WRITE_TO_AZURE') === 'true' || getEnvVar('DUAL_WRITE_TO_AZURE') === 'true' || false,
       
       // Storage Migration: Read from Azure first (default: false, migration phase 4+)
-      readFromAzureFirst: getEnvVar('VITE_READ_FROM_AZURE_FIRST') === 'true' || getEnvVar('READ_FROM_AZURE_FIRST') === 'true' || false,
+      readFromAzureFirst: getEnvVar('VITE_READ_FROM_AZURE_FIRST') === 'true' || getEnvVar('READ_FROM_AZURE_FIRST') === 'true' || true, // Default: true (migration from Netlify Blobs)
       
       // Development: Use Azurite emulator (default: true in dev when Azure enabled)
       enableAzuriteLocal: getEnvVar('VITE_ENABLE_AZURITE_LOCAL') === 'true' || getEnvVar('ENABLE_AZURITE_LOCAL') === 'true' || (getEnvVar('NODE_ENV') !== 'production')
