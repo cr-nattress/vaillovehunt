@@ -47,27 +47,10 @@ export class DualWriteService {
       results.errors.push(`localStorage error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
-    // Always POST to server via apiClient
-    try {
-      const payload: KVUpsert = {
-        key,
-        value,
-        indexes: indexes.length > 0 ? indexes : undefined
-      };
-
-      // Validate payload before sending
-      const validatedPayload = validateSchema(KVUpsertSchema, payload, 'KV upsert payload');
-
-      const result = await apiClient.post<unknown>('/kv-upsert', validatedPayload);
-      
-      results.server = true;
-      console.log(`✅ DualWrite server: ${key}`, result);
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown server error';
-      results.errors.push(`Server error: ${errorMessage}`);
-      console.error(`❌ DualWrite server failed for ${key}:`, errorMessage);
-    }
+    // Skip server writes temporarily - Azure Tables migration in progress
+    // TODO: Implement Azure Table writes for app.json and other keys
+    console.log(`⏭️ DualWrite skipping server write for ${key} - using localStorage only during migration`);
+    results.errors.push('Server write temporarily disabled - Azure Tables migration in progress');
 
     return results;
   }
@@ -147,19 +130,15 @@ export class DualWriteService {
     try {
       console.log(`📋 DualWrite list (includeValues: ${includeValues})`);
 
-      const endpoint = `/kv-list${includeValues ? '?includeValues=true' : ''}`;
-      const rawResponse = await apiClient.get<unknown>(endpoint);
-      const response = validateSchema(KVListResponseSchema, rawResponse, 'KV list response');
-
+      // Temporarily disabled during Azure Tables migration
+      console.log(`⏭️ DualWrite list temporarily disabled - using localStorage fallback`);
+      
+      // Return localStorage keys as fallback
+      const keys = LocalStorageService.listKeys();
       if (includeValues) {
-        // Response should include values, but our schema doesn't support this yet
-        // For now, return the raw response if it has the expected structure
-        if (Array.isArray((rawResponse as any).items)) {
-          return (rawResponse as any).items;
-        }
+        return keys.map(key => ({ key, value: LocalStorageService.get(key) }));
       }
-
-      return response.keys;
+      return keys;
 
     } catch (error) {
       console.error('❌ DualWrite list failed:', error);
