@@ -6,6 +6,8 @@
  */
 
 import { getOrgRepo } from '../infra/registry'
+import { azureTableService } from './AzureTableService'
+import { getFlag } from '../config/flags'
 import { getFlags } from '../config'
 import type { OrgRepoPort } from '../ports/org.repo.port'
 import type { AppData, OrganizationSummary, HuntIndexEntry } from '../types/appData.schemas'
@@ -346,18 +348,27 @@ export class OrgRegistryServiceV2 {
    * Get service health status
    */
   async getHealthStatus() {
+    const isAzureEnabled = getFlag('repository', 'enableAzureTables')
+    
     const status = {
       timestamp: new Date().toISOString(),
       service: 'OrgRegistryServiceV2',
       adapters: {
-        orgRepo: { status: 'unknown' as 'ok' | 'error', error: null as string | null }
+        orgRepo: { status: 'unknown' as 'ok' | 'error', error: null as string | null },
+        ...(isAzureEnabled && {
+          azureTableService: { status: 'unknown' as 'ok' | 'error', error: null as string | null }
+        })
       },
       cache: {
         enabled: this.config.enableCaching,
         size: this.cache.size,
         keys: Array.from(this.cache.keys())
       },
-      config: this.config,
+      config: {
+        ...this.config,
+        azureTablesEnabled: isAzureEnabled,
+        azureTablesConfig: isAzureEnabled ? azureTableService.getConfig() : null
+      },
       overall: 'unknown' as 'healthy' | 'degraded' | 'unhealthy'
     }
 
@@ -365,11 +376,35 @@ export class OrgRegistryServiceV2 {
     try {
       await this.orgRepo.listOrgs({ limit: 1 })
       status.adapters.orgRepo.status = 'ok'
-      status.overall = 'healthy'
     } catch (error) {
       status.adapters.orgRepo.status = 'error'
       status.adapters.orgRepo.error = error instanceof Error ? error.message : String(error)
+    }
+
+    // Test Azure Table Service if enabled
+    if (isAzureEnabled && status.adapters.azureTableService) {
+      try {
+        const healthCheck = await azureTableService.healthCheck()
+        if (healthCheck.healthy) {
+          status.adapters.azureTableService.status = 'ok'
+        } else {
+          status.adapters.azureTableService.status = 'error'
+          status.adapters.azureTableService.error = healthCheck.message
+        }
+      } catch (error) {
+        status.adapters.azureTableService.status = 'error'
+        status.adapters.azureTableService.error = error instanceof Error ? error.message : String(error)
+      }
+    }
+
+    // Determine overall health
+    const errorCount = Object.values(status.adapters).filter(a => a.status === 'error').length
+    if (errorCount === 0) {
+      status.overall = 'healthy'
+    } else if (errorCount === Object.keys(status.adapters).length) {
       status.overall = 'unhealthy'
+    } else {
+      status.overall = 'degraded'
     }
 
     return status

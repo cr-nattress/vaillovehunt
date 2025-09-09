@@ -28,8 +28,8 @@ try {
   // Update PORT
   envContent = envContent.replace(/^PORT=.*/m, `PORT=${newPort}`);
   
-  // Update VITE_API_URL
-  envContent = envContent.replace(/^VITE_API_URL=.*/m, `VITE_API_URL=http://localhost:${newPort}`);
+  // Update VITE_API_URL (ensure it points at the API base)
+  envContent = envContent.replace(/^VITE_API_URL=.*/m, `VITE_API_URL=http://localhost:${newPort}/api`);
   
   fs.writeFileSync(envPath, envContent);
   

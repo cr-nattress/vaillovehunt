@@ -1,0 +1,9 @@
+{
+  "entryPoints": ["src"],
+  "tsconfig": "tsconfig.json",
+  "out": "docs/reference",
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.*", "src/server/**"],
+  "excludeExternals": true,
+  "excludePrivate": true,
+  "excludeProtected": true
+}

@@ -1,0 +1,49 @@
+name: Epic
+description: Plan and track a large body of work
+title: "Epic: <short title>"
+labels: ["epic"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Describe the customer problem and why it matters.
+      placeholder: What problem are we solving?
+    validations:
+      required: true
+  - type: textarea
+    id: goals
+    attributes:
+      label: Goals & Non-Goals
+      description: Bullet goals and non-goals for this epic.
+      placeholder: |
+        Goals:
+          - ...
+        Non-Goals:
+          - ...
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What’s in and what’s out for this epic.
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Success Metrics / KPIs
+      description: How will we know this epic succeeded?
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks & Assumptions
+  - type: textarea
+    id: links
+    attributes:
+      label: Links
+      description: Docs/designs/research.
+  - type: textarea
+    id: stories
+    attributes:
+      label: User Stories
+      description: Link child stories here.

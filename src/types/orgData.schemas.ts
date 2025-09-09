@@ -5,6 +5,9 @@
 
 import { z } from 'zod'
 
+// Schema version for Org JSON
+export const CURRENT_ORG_SCHEMA_VERSION = '1.0.0'
+
 // Contact schema
 export const ContactSchema = z.object({
   firstName: z.string(),
@@ -197,7 +200,7 @@ export const HuntSchema = z.object({
 
 // Main Organization JSON schema
 export const OrgDataSchema = z.object({
-  schemaVersion: z.string().default('1.0.0'),
+  schemaVersion: z.string().default(CURRENT_ORG_SCHEMA_VERSION),
   etag: z.string().optional(),
   updatedAt: z.string(),
   org: z.object({

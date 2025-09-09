@@ -34,8 +34,9 @@ class ApiClient {
    * Resolve API base URL based on environment
    */
   private resolveApiBase(): string {
+    // Server-side (Node.js) environment - use localhost API
     if (typeof window === 'undefined') {
-      return ''
+      return 'http://localhost:3001'
     }
 
     // Check for explicit API URL from environment first
@@ -57,9 +58,9 @@ class ApiClient {
       return '/.netlify/functions'
     }
 
-    // In development, use local Express server
-    const devUrl = 'http://localhost:3002/api'
-    console.log('🌐 Development mode, using local server:', devUrl)
+    // In development (localhost), use Vite dev proxy to avoid CORS
+    const devUrl = '/api'
+    console.log('🌐 Development mode, using Vite proxy base:', devUrl)
     return devUrl
   }
 
@@ -163,7 +164,7 @@ class ApiClient {
         return responseBody as T
 
       } catch (error) {
-        lastError = error as Error
+        lastError = (error instanceof Error) ? error : new Error('Unknown error')
         
         if (error instanceof Error && error.name === 'AbortError') {
           console.error(`⏰ Request timeout after ${timeout}ms`)
@@ -178,7 +179,8 @@ class ApiClient {
           }
         }
 
-        console.warn(`❌ Request failed (attempt ${attempt + 1}):`, error.message)
+        const message = (error instanceof Error) ? error.message : 'Unknown error'
+        console.warn(`❌ Request failed (attempt ${attempt + 1}):`, message)
         
         // If this is the last attempt, throw the error
         if (attempt === retryAttempts - 1) {

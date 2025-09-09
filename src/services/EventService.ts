@@ -1,5 +1,6 @@
 import { config } from '../config'
 import { orgRegistryService } from './OrgRegistryService'
+import { getEventAdapter } from '../infra/events.adapter.factory'
 
 export interface OrgEvent {
   key: string
@@ -112,78 +113,27 @@ async function fetchFromAPI(baseUrl: string, dateStr?: string): Promise<OrgEvent
 export async function fetchTodaysEvents(baseUrl: string = ''): Promise<OrgEvent[]> {
   const todayStr = formatDateYYYYMMDD(new Date())
   
-  // Check feature flag for blob-backed events
-  if (config.ENABLE_BLOB_EVENTS) {
-    console.log('🚩 EventService: ENABLE_BLOB_EVENTS is ON, trying API first, then blobs, then mocks')
-    
-    try {
-      // First try the new API endpoint
-      const apiEvents = await fetchFromAPI(baseUrl, todayStr)
-      if (apiEvents.length > 0) {
-        console.log('✅ EventService: Using API events')
-        return apiEvents
-      }
-    } catch (apiError) {
-      console.log('⚠️ EventService: API failed, trying blob fallback')
+  console.log('🎯 EventService: Fetching today\'s events from live data sources only')
+  
+  try {
+    // First try the API endpoint
+    const apiEvents = await fetchFromAPI(baseUrl, todayStr)
+    if (apiEvents.length > 0) {
+      console.log('✅ EventService: Using API events')
+      return apiEvents
     }
-    
-    // Fallback to direct blob access
-    const blobEvents = await fetchFromBlobs(todayStr)
-    if (blobEvents.length > 0) {
-      console.log('✅ EventService: Using blob events')
-      return blobEvents
-    } else {
-      console.log('📭 EventService: No blob events found, falling back to mocks')
-    }
-  } else {
-    console.log('🚩 EventService: ENABLE_BLOB_EVENTS is OFF, trying API then mocks')
-    
-    try {
-      // Try API even with feature flag off (for testing)
-      const apiEvents = await fetchFromAPI(baseUrl, todayStr)
-      if (apiEvents.length > 0) {
-        console.log('✅ EventService: Using API events (feature flag off but API working)')
-        return apiEvents
-      }
-    } catch (apiError) {
-      console.log('⚠️ EventService: API failed, falling back to mocks')
-    }
+  } catch (apiError) {
+    console.log('⚠️ EventService: API failed, trying blob storage')
   }
   
-  // Return mock scavenger hunts occurring today (final fallback)
-  console.log('📋 EventService: Using mock events as final fallback')
-  const mockEvents: OrgEvent[] = [
-    {
-      key: 'events/bhhs-vail',
-      orgSlug: 'bhhs',
-      orgName: 'BHHS',
-      eventName: 'Vail',
-      startAt: todayStr,
-      endAt: todayStr,
-      data: { description: 'BHHS Vail Scavenger Hunt' }
-    },
-    {
-      key: 'events/beaver-creek-sports-nottingham',
-      orgSlug: 'beaver-creek-sports',
-      orgName: 'Beaver Creek Sports',
-      eventName: 'Nottingham Hunt',
-      startAt: todayStr,
-      endAt: todayStr,
-      data: { description: 'Beaver Creek Sports Nottingham Hunt' }
-    },
-    {
-      key: 'events/ra-nelson-find-the-goat',
-      orgSlug: 'ra-nelson',
-      orgName: 'RA Nelson',
-      eventName: 'Find the goat',
-      startAt: todayStr,
-      endAt: todayStr,
-      data: { description: 'RA Nelson Find the goat Hunt' }
-    }
-  ]
-
-  // Simulate async behavior
-  await new Promise(resolve => setTimeout(resolve, 100))
-  
-  return mockEvents.sort((a, b) => a.orgName.localeCompare(b.orgName))
+  // Fallback to direct blob access
+  const blobEvents = await fetchFromBlobs(todayStr)
+  if (blobEvents.length > 0) {
+    console.log('✅ EventService: Using blob events')
+    return blobEvents
+  } else {
+    console.log('📭 EventService: No events found in live data sources')
+    return []
+  }
 }
+

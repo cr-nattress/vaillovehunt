@@ -55,6 +55,23 @@ function createApiResponse<T>(data?: T, error?: string, message?: string): ApiRe
 }
 
 /**
+ * Normalize arbitrary status strings to the allowed EventListItemV2 status union
+ */
+function normalizeStatus(status?: string): EventListItemV2['status'] {
+  switch (status) {
+    case 'draft':
+    case 'scheduled':
+    case 'active':
+    case 'completed':
+    case 'archived':
+      return status
+    default:
+      // Default to 'scheduled' if status is missing or unrecognized
+      return 'scheduled'
+  }
+}
+
+/**
  * Format date to YYYY-MM-DD
  */
 function formatDateYYYYMMDD(d: Date): string {
@@ -96,7 +113,7 @@ export const eventsListHandlerV2 = async (req: Request, res: Response): Promise<
       huntId: event.data?.huntId || '',
       startDate: event.startAt || '',
       endDate: event.endAt,
-      status: event.data?.status || 'scheduled',
+      status: normalizeStatus(event.data?.status),
       metadata: includeContext ? {
         stopCount: event.data?.stops,
         teamCount: event.data?.teams?.length,

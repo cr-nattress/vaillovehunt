@@ -10,19 +10,20 @@ interface ModernSplashScreenProps {
   onSelectEvent: (evt: OrgEvent, teamName?: string) => void
   onSetupNew: () => void
   onClose?: () => void
+  initialStep?: 'events' | 'new-org'
 }
 
 // Mock team data
 const MOCK_TEAMS = ['RED', 'GREEN', 'BLUE', 'YELLOW', 'ORANGE']
 
-export default function ModernSplashScreen({ onSelectEvent, onSetupNew, onClose }: ModernSplashScreenProps) {
+export default function ModernSplashScreen({ onSelectEvent, onSetupNew, onClose, initialStep = 'events' }: ModernSplashScreenProps) {
   const { warning: showWarningToast } = useToastActions()
   const [events, setEvents] = useState<OrgEvent[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedEvent, setSelectedEvent] = useState<OrgEvent | null>(null)
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
-  const [step, setStep] = useState<'events' | 'teams' | 'form' | 'new-org' | 'new-hunt' | 'new-steps' | 'review-submit'>('events')
+  const [step, setStep] = useState<'events' | 'teams' | 'form' | 'new-org' | 'new-hunt' | 'new-steps' | 'review-submit'>(initialStep)
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',

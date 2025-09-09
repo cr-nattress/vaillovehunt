@@ -1,0 +1,17 @@
+# Project Structure
+
+```
+/ (repo root)
+├─ src/
+│  ├─ components/           # UI components
+│  ├─ server/               # Express/Netlify state servers
+│  └─ ...
+├─ docs/                    # Narrative docs and guides
+├─ website/                 # Docusaurus site
+├─ .storybook/              # Storybook config
+└─ typedoc.json             # API reference config
+```
+
+- Vite is used to build the React app.
+- TypeScript is enabled with strict mode.
+- Tests run via Vitest.

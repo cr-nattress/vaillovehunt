@@ -13,7 +13,7 @@ import {
   DeleteMediaInput,
   MediaUploadOptions
 } from '../../ports/media.port'
-import { getConfig } from '../../config'
+import { getConfig } from '../../config/config'
 import { v2 as cloudinary } from 'cloudinary'
 
 /**

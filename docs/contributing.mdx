@@ -1,0 +1,14 @@
+# Contributing
+
+- Use feature branches and open PRs with a clear description.
+- Add or update docs alongside code changes:
+  - Storybook stories for components
+  - MDX pages for guides
+  - TSDoc for APIs (regenerate with `npm run api:build`)
+- Run checks before pushing:
+
+```bash
+npm run sb:build
+npm run api:build
+npm run docs:build
+```

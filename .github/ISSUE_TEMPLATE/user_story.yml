@@ -1,0 +1,41 @@
+name: User Story
+description: Capture a user story with acceptance criteria
+title: "Story: <concise title>"
+labels: ["user-story"]
+body:
+  - type: input
+    id: role
+    attributes:
+      label: As a (role)
+      placeholder: e.g., Guest participant
+    validations:
+      required: true
+  - type: textarea
+    id: want
+    attributes:
+      label: I want
+      description: Capability the user needs.
+      placeholder: e.g., To join today’s scavenger hunt and pick my team
+    validations:
+      required: true
+  - type: textarea
+    id: so-that
+    attributes:
+      label: So that
+      description: Value/benefit to the user.
+      placeholder: e.g., So I can quickly start participating without complex setup
+    validations:
+      required: true
+  - type: checkboxes
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      options:
+        - label: Criterion 1
+        - label: Criterion 2
+        - label: Criterion 3
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Context, constraints, links to designs and docs.

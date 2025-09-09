@@ -6,7 +6,9 @@
  */
 
 import { getEventRepo, getOrgRepo } from '../infra/registry'
-import { getFlags } from '../config'
+import { azureTableService } from './AzureTableService'
+import { getFlag } from '../config/flags'
+import { flags } from '../config/flags'
 import type { EventRepoPort } from '../ports/event.repo.port'
 import type { OrgRepoPort } from '../ports/org.repo.port'
 
@@ -74,7 +76,7 @@ export class EventServiceV2 {
       enableCaching: true,
       cacheExpiryMs: 5 * 60 * 1000, // 5 minutes
       maxRetries: 3,
-      fallbackToMocks: true,
+      fallbackToMocks: false, // No mock fallbacks - live data only
       ...config
     }
 
@@ -175,11 +177,8 @@ export class EventServiceV2 {
     } catch (error) {
       console.error(`❌ EventServiceV2: Failed to fetch events for ${dateStr}:`, error)
 
-      // Fallback to mocks if enabled and appropriate
-      if (this.config.fallbackToMocks && this.shouldFallbackToMocks()) {
-        console.log('🎭 EventServiceV2: Falling back to mock events')
-        return this.getMockEvents(dateStr, options)
-      }
+      // No mock fallbacks - return empty array if live data fails
+      console.log('📭 EventServiceV2: No events found in live data sources')
 
       throw error
     }
@@ -285,19 +284,28 @@ export class EventServiceV2 {
    * Get service health status
    */
   async getHealthStatus() {
+    const isAzureEnabled = getFlag('repository', 'enableAzureTables')
+    
     const status = {
       timestamp: new Date().toISOString(),
       service: 'EventServiceV2',
       adapters: {
         eventRepo: { status: 'unknown' as 'ok' | 'error', error: null as string | null },
-        orgRepo: { status: 'unknown' as 'ok' | 'error', error: null as string | null }
+        orgRepo: { status: 'unknown' as 'ok' | 'error', error: null as string | null },
+        ...(isAzureEnabled && {
+          azureTableService: { status: 'unknown' as 'ok' | 'error', error: null as string | null }
+        })
       },
       cache: {
         enabled: this.config.enableCaching,
         size: this.cache.size,
         keys: Array.from(this.cache.keys())
       },
-      config: this.config,
+      config: {
+        ...this.config,
+        azureTablesEnabled: isAzureEnabled,
+        azureTablesConfig: isAzureEnabled ? azureTableService.getConfig() : null
+      },
       overall: 'unknown' as 'healthy' | 'degraded' | 'unhealthy'
     }
 
@@ -317,6 +325,22 @@ export class EventServiceV2 {
     } catch (error) {
       status.adapters.orgRepo.status = 'error'
       status.adapters.orgRepo.error = error instanceof Error ? error.message : String(error)
+    }
+
+    // Test Azure Table Service if enabled
+    if (isAzureEnabled && status.adapters.azureTableService) {
+      try {
+        const healthCheck = await azureTableService.healthCheck()
+        if (healthCheck.healthy) {
+          status.adapters.azureTableService.status = 'ok'
+        } else {
+          status.adapters.azureTableService.status = 'error'
+          status.adapters.azureTableService.error = healthCheck.message
+        }
+      } catch (error) {
+        status.adapters.azureTableService.status = 'error'
+        status.adapters.azureTableService.error = error instanceof Error ? error.message : String(error)
+      }
     }
 
     // Determine overall health
@@ -371,41 +395,6 @@ export class EventServiceV2 {
     return filtered
   }
 
-  /**
-   * Helper: Determine if we should fallback to mocks
-   */
-  private shouldFallbackToMocks(): boolean {
-    const flags = getFlags()
-    // Only fallback to mocks in development or when explicitly enabled
-    return flags.app.environment === 'development' || this.config.fallbackToMocks
-  }
-
-  /**
-   * Helper: Generate mock events for fallback
-   */
-  private getMockEvents(dateStr: string, options: EventQueryOptions): OrgEvent[] {
-    console.log('🎭 EventServiceV2: Generating mock events')
-    
-    const mockEvents: OrgEvent[] = [
-      {
-        key: `events/${dateStr}/mock-org`,
-        orgSlug: 'mock-org',
-        orgName: 'Mock Organization',
-        eventName: 'Sample Hunt Event',
-        startAt: dateStr,
-        endAt: dateStr,
-        data: {
-          description: 'Sample Hunt Event - Mock Organization',
-          huntId: 'sample-hunt',
-          status: 'active',
-          stops: 5,
-          teams: ['RED', 'BLUE', 'GREEN']
-        }
-      }
-    ]
-
-    return this.filterEvents(mockEvents, options)
-  }
 }
 
 /**

@@ -26,6 +26,11 @@ import { getRandomStops } from './utils/random'
 import FeedPage from './features/feed/components/FeedPage'
 import EventPage from './features/event/EventPage'
 import SplashScreen from './features/event/ModernSplashScreen'
+import NewCustomerSplashScreen from './features/event/NewCustomerSplashScreen'
+import UnifiedSplashScreen from './features/event/UnifiedSplashScreen'
+import { useCustomerStore } from './store/customer.store'
+import { leadCaptureService } from './services/LeadCaptureService'
+import { flags } from './config/flags'
 
 /**
  * Vail Love Hunt — React single-page app for a couples' scavenger/date experience in Vail.
@@ -58,6 +63,11 @@ export default function App() {
     progress, setProgress, updateStopProgress, resetProgress, resetHints
   } = useProgressStore()
   
+  // Customer store for new customer flow
+  const {
+    currentCustomer, setCurrentCustomer, completeOnboarding
+  } = useCustomerStore()
+  
   // Phase 3: Deprecated - no longer using hash router
   // const { currentPage: hashPage, navigateToPage: hashNavigateToPage } = useHashRouter()
   
@@ -65,6 +75,7 @@ export default function App() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showSplash, setShowSplash] = useState(false)
+  const [huntCreationMode, setHuntCreationMode] = useState(false)
   
   // Calculate progress stats from Zustand state
   const completeCount = useMemo(() => stops.reduce((acc, s) => acc + ((progress[s.id]?.done) ? 1 : 0), 0), [progress, stops])
@@ -133,6 +144,74 @@ export default function App() {
         break
     }
   }
+
+  // Unified Splash Screen handlers
+  const handleContinueHunt = (event, participantInfo) => {
+    console.log('🎯 Returning participant continuing hunt:', { event: event.eventName, participant: participantInfo.email })
+    
+    // Set event and participant info
+    if (event.orgName) setLocationName(event.orgName)
+    if (event.eventName) setEventName(event.eventName)
+    setTeamName(participantInfo.teamName)
+    
+    // Navigate to hunt
+    navigate('event')
+    setShowSplash(false)
+        
+    // Mark session as active
+    sessionStorage.setItem('recent-session', new Date().toISOString())
+    sessionStorage.setItem('participant-info', JSON.stringify(participantInfo))
+  }
+
+  const handleJoinEvent = (event, teamName) => {
+    console.log('🏃 New participant joining event:', { event: event.eventName, team: teamName })
+    
+    // Set event info
+    if (event.orgName) setLocationName(event.orgName)
+    if (event.eventName) setEventName(event.eventName)
+    setTeamName(teamName)
+    
+    // Navigate to hunt
+    navigate('event')
+    setShowSplash(false)
+        requestOpenEventSettings()
+    
+    // Mark session as active
+    sessionStorage.setItem('recent-session', new Date().toISOString())
+  }
+
+  const handlePlanFuture = async (customerData) => {
+    try {
+      console.log('📅 Customer planning future event:', customerData)
+      
+      // Set current customer in store
+      setCurrentCustomer(customerData)
+      
+      // Capture lead
+      await leadCaptureService.captureLead(customerData, 'plan-future-flow')
+      
+      // Complete onboarding
+      completeOnboarding()
+      
+      // Navigate to event creation flow
+            setShowSplash(true) // Show regular splash for event creation
+      
+    } catch (error) {
+      console.error('❌ Failed to handle customer planning:', error)
+      // Still proceed even if lead capture fails
+            setShowSplash(true)
+    }
+  }
+
+  const handleCreateNew = () => {
+    console.log('➕ Creating new hunt - showing creation wizard')
+    setHuntCreationMode(true) // Enable hunt creation mode
+    setShowSplash(true) // Show the splash screen
+    // Don't navigate to 'event' yet - let the creation wizard handle the flow
+  }
+
+  // Simple flag check - no toggle logic needed
+  const showUnifiedFlow = flags.experimental.enableNewCustomerFlow && !lockedByQuery
 
   // Phase 2: Deprecated - tab initialization now handled by store
   // Old tab initialization effect removed - now using store initialization
@@ -212,7 +291,8 @@ export default function App() {
     initializeApp();
 
     // Show splash on root path when not locked by query params
-    if (window.location.pathname === '/' && !lockedByQuery) {
+    // But only if unified flow is NOT enabled
+    if (window.location.pathname === '/' && !lockedByQuery && !flags.experimental.enableNewCustomerFlow) {
       setShowSplash(true)
     }
 
@@ -603,6 +683,18 @@ export default function App() {
       eventName={eventName}
     >
       <div className='min-h-screen text-slate-900 bg-gray-50'>
+        {/* Unified User Flow - Always show when feature flag enabled */}
+        {showUnifiedFlow && (
+          <UnifiedSplashScreen
+            onContinueHunt={handleContinueHunt}
+            onJoinEvent={handleJoinEvent}
+            onPlanFuture={handlePlanFuture}
+            onCreateNew={handleCreateNew}
+            onClose={() => {/* No close action needed - always show */}}
+          />
+        )}
+
+        {/* Regular Event Selection Flow */}
         {showSplash && (
           <SplashScreen
             onSelectEvent={(evt, teamName) => {
@@ -611,14 +703,26 @@ export default function App() {
               if (teamName) setTeamName(teamName)
               navigate('event')
               setShowSplash(false)
+              setHuntCreationMode(false) // Reset hunt creation mode
               requestOpenEventSettings()
+              
+              // Mark session as active to avoid showing new customer flow again
+              sessionStorage.setItem('recent-session', new Date().toISOString())
             }}
             onSetupNew={() => {
               navigate('event')
               setShowSplash(false)
+              setHuntCreationMode(false) // Reset hunt creation mode
               requestOpenEventSettings()
+              
+              // Mark session as active
+              sessionStorage.setItem('recent-session', new Date().toISOString())
             }}
-            onClose={() => setShowSplash(false)}
+            onClose={() => {
+              setShowSplash(false)
+              setHuntCreationMode(false) // Reset hunt creation mode when closed
+            }}
+            initialStep={huntCreationMode ? 'new-org' : 'events'}
           />
         )}
 

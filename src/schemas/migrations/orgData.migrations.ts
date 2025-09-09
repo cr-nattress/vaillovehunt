@@ -4,7 +4,7 @@
  * Handles migration of per-organization JSON structure between schema versions.
  */
 
-import { Migration, migrationEngine } from './index'
+import { Migration, migrationEngine, createSafeMigration } from './index'
 import { OrgDataSchema } from '../../types/orgData.schemas'
 
 /**
@@ -16,24 +16,43 @@ const migration_1_0_0_to_1_1_0: Migration = {
   to: '1.1.0',
   description: 'Add team upload tracking and enhanced hunt metadata',
   migrate: (data: any) => {
-    return {
+    console.log(`🔄 Migration 1.0.0->1.1.0: Adding team upload tracking and enhanced metadata`)
+    console.log(`📊 Input data summary:`, {
+      schemaVersion: data.schemaVersion,
+      huntCount: data.hunts?.length || 0,
+      orgSlug: data.org?.orgSlug,
+      hasTeams: data.hunts?.some((h: any) => h.teams?.length > 0) || false
+    })
+
+    const result = {
       ...data,
       schemaVersion: '1.1.0',
       updatedAt: new Date().toISOString(),
-      hunts: data.hunts?.map((hunt: any) => ({
-        ...hunt,
-        // Add upload tracking to teams if using multi-team model
-        teams: hunt.teams?.map((team: any) => ({
-          ...team,
-          uploads: team.uploads || {
+      hunts: data.hunts?.map((hunt: any, huntIndex: number) => {
+        console.log(`📝 Processing hunt ${huntIndex}: ${hunt.name || hunt.id}`)
+        
+        // Process teams for multi-team model
+        const processedTeams = hunt.teams?.map((team: any, teamIndex: number) => {
+          const teamUploads = {
             total: 0,
             photos: 0,
             videos: 0,
-            lastUploadedAt: null
+            lastUploadedAt: undefined // Fixed: was null, now undefined for optional string compatibility
           }
-        })),
-        // Add upload tracking structure for hunt-level uploads
-        uploads: hunt.uploads || {
+          
+          console.log(`  👥 Processing team ${teamIndex}: ${team.name}`, {
+            hadPreviousUploads: !!team.uploads,
+            newUploadsStructure: teamUploads
+          })
+          
+          return {
+            ...team,
+            uploads: team.uploads || teamUploads
+          }
+        })
+        
+        // Process hunt-level uploads
+        const huntUploads = {
           store: {
             blobsPrefix: `hunts/${hunt.id}/uploads`,
             cloudinaryFolder: `scavenger/entries/${hunt.slug}`
@@ -42,11 +61,31 @@ const migration_1_0_0_to_1_1_0: Migration = {
             total: 0,
             photos: 0,
             videos: 0,
-            lastUploadedAt: null
+            lastUploadedAt: undefined // Fixed: was null, now undefined for optional string compatibility
           }
         }
-      })) || []
+        
+        console.log(`  📁 Processing hunt uploads for ${hunt.name || hunt.id}`, {
+          hadPreviousUploads: !!hunt.uploads,
+          newUploadsStructure: huntUploads
+        })
+
+        return {
+          ...hunt,
+          teams: processedTeams,
+          uploads: hunt.uploads || huntUploads
+        }
+      }) || []
     }
+    
+    console.log(`✅ Migration 1.0.0->1.1.0 completed:`, {
+      outputSchemaVersion: result.schemaVersion,
+      huntCount: result.hunts.length,
+      huntsWithUploads: result.hunts.filter((h: any) => h.uploads).length,
+      huntsWithTeams: result.hunts.filter((h: any) => h.teams?.length > 0).length
+    })
+    
+    return result
   },
   validate: OrgDataSchema
 }
@@ -241,8 +280,14 @@ const migration_0_9_0_to_1_0_0: Migration = {
  * Register all organization data migrations
  */
 export function registerOrgDataMigrations() {
+  // Wrap critical migrations with enhanced validation
+  const safeMigration_1_0_0_to_1_1_0 = createSafeMigration(
+    migration_1_0_0_to_1_1_0,
+    ['schemaVersion', 'updatedAt', 'org', 'hunts']
+  )
+  
   migrationEngine.registerMigration('orgData', migration_0_9_0_to_1_0_0)
-  migrationEngine.registerMigration('orgData', migration_1_0_0_to_1_1_0) 
+  migrationEngine.registerMigration('orgData', safeMigration_1_0_0_to_1_1_0) 
   migrationEngine.registerMigration('orgData', migration_1_1_0_to_1_2_0)
   
   console.log('✅ Org Data migrations registered:', migrationEngine.getAvailableVersions('orgData'))

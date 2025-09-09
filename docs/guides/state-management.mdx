@@ -1,0 +1,11 @@
+# State Management
+
+This project currently uses `zustand` for local state. Replace or expand this guide as architecture evolves.
+
+```tsx live
+import { useState } from 'react';
+export default function Counter(){
+  const [n,setN] = useState(0);
+  return <button onClick={()=>setN(n+1)}>Count: {n}</button>
+}
+```

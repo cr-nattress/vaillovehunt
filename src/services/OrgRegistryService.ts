@@ -14,7 +14,7 @@ import {
   Hunt 
 } from '../types/orgData.schemas'
 import { slugify } from '../utils/slug'
-import { validateAppData, validateOrgData, type ValidationOptions } from '../schemas/validation/index'
+import { validateAppData, validateOrgData, type ValidationOptions } from '../schemas/index'
 
 export class OrgRegistryService {
   private static instance: OrgRegistryService

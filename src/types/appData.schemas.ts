@@ -5,6 +5,9 @@
 
 import { z } from 'zod'
 
+// Schema version for App JSON
+export const CURRENT_APP_SCHEMA_VERSION = '1.0.0'
+
 // Base metadata schemas
 export const AppMetadataSchema = z.object({
   name: z.string(),
@@ -74,7 +77,7 @@ export const DateIndexSchema = z.record(
 
 // Main App JSON schema
 export const AppDataSchema = z.object({
-  schemaVersion: z.string().default('1.0.0'),
+  schemaVersion: z.string().default(CURRENT_APP_SCHEMA_VERSION),
   etag: z.string().optional(),
   updatedAt: z.string(),
   app: z.object({

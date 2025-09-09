@@ -41,33 +41,51 @@ export interface AppConfig {
 }
 
 /**
+ * Environment-aware variable getter
+ * Works in both Vite (import.meta.env) and Node.js (process.env) contexts
+ */
+function getEnvVar(key: string): string | undefined {
+  try {
+    // Try import.meta.env first (Vite environment)
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      return import.meta.env[key]
+    }
+  } catch {
+    // import.meta might not be available
+  }
+  
+  // Fallback to Node.js process.env (backend)
+  return process.env[key]
+}
+
+/**
  * Load configuration from environment variables with safe defaults
  */
 function loadConfig(): AppConfig {
   return {
     cloudinary: {
-      cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '',
-      uploadFolder: import.meta.env.VITE_CLOUDINARY_UPLOAD_FOLDER || 'scavenger/entries'
+      cloudName: getEnvVar('VITE_CLOUDINARY_CLOUD_NAME') || '',
+      uploadFolder: getEnvVar('VITE_CLOUDINARY_UPLOAD_FOLDER') || 'scavenger/entries'
     },
     
     netlify: {
-      blobsStoreName: import.meta.env.VITE_NETLIFY_BLOBS_STORE_NAME || 'vail-hunt-state'
+      blobsStoreName: getEnvVar('VITE_NETLIFY_BLOBS_STORE_NAME') || 'vail-hunt-state'
     },
     
     location: {
       cacheExpiryMs: 10 * 60 * 1000, // 10 minutes
       defaultTimeoutMs: 8000, // 8 seconds  
-      ipGeoUrl: import.meta.env.VITE_IP_GEO_URL || 'https://ipapi.co/json/'
+      ipGeoUrl: getEnvVar('VITE_IP_GEO_URL') || 'https://ipapi.co/json/'
     },
     
     api: {
-      baseUrl: import.meta.env.VITE_API_BASE_URL || '',
+      baseUrl: getEnvVar('VITE_API_BASE_URL') || '',
       timeout: 30000 // 30 seconds
     },
     
     dev: {
-      enableDebugLogs: import.meta.env.VITE_DEBUG_LOGS === 'true' || import.meta.env.DEV === true,
-      enableMockData: import.meta.env.VITE_ENABLE_MOCK_DATA === 'true' || false
+      enableDebugLogs: getEnvVar('VITE_DEBUG_LOGS') === 'true' || getEnvVar('DEV') === 'true',
+      enableMockData: getEnvVar('VITE_ENABLE_MOCK_DATA') === 'true' || false
     }
   } as const
 }

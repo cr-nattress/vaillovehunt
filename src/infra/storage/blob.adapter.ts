@@ -28,8 +28,8 @@ import {
 import { AppData } from '../../types/appData.schemas'
 import { OrgData, Hunt } from '../../types/orgData.schemas'
 import { blobService } from '../../services/BlobService'
-import { validateAppData, validateOrgData } from '../../schemas/validation/index'
-import { getConfig } from '../../config'
+import { validateAppData, validateOrgData } from '../../schemas/index'
+import { getConfig } from '../../config/config'
 
 /**
  * Configuration for blob adapters
@@ -44,9 +44,9 @@ interface BlobAdapterConfig {
  * Default configuration factory
  */
 function getBlobAdapterConfig(): BlobAdapterConfig {
-  const config = getConfig()
+  const storeName = getConfig('netlify', 'blobsStoreName')
   return {
-    storeName: config.storage.defaultStore,
+    storeName: storeName,
     autoMigrate: true,
     strictValidation: false
   }

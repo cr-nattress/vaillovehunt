@@ -136,19 +136,39 @@ export class MigrationEngine {
 
     try {
       for (const migration of migrationPath) {
-        console.log(`Applying migration ${migration.from} -> ${migration.to}: ${migration.description}`)
+        console.log(`🔄 Applying migration ${migration.from} -> ${migration.to}: ${migration.description}`)
+        console.log(`📊 Pre-migration data sample:`, {
+          keys: Object.keys(currentData || {}),
+          schemaVersion: currentData?.schemaVersion,
+          dataType: typeof currentData
+        })
         
+        const preMigrationData = currentData
         currentData = migration.migrate(currentData)
         appliedMigrations.push(`${migration.from}->${migration.to}`)
 
+        console.log(`📊 Post-migration data sample:`, {
+          keys: Object.keys(currentData || {}),
+          schemaVersion: currentData?.schemaVersion,
+          dataType: typeof currentData
+        })
+
         // Validate result if schema provided
         if (migration.validate) {
+          console.log(`🔍 Validating migration result with schema...`)
           const validationResult = migration.validate.safeParse(currentData)
           if (!validationResult.success) {
+            console.error(`❌ Migration validation failed for ${migration.from} -> ${migration.to}:`)
+            console.error(`🔍 Validation errors:`, validationResult.error.issues)
+            console.error(`📋 Failed data structure:`, JSON.stringify(currentData, null, 2))
+            console.error(`📋 Original data structure:`, JSON.stringify(preMigrationData, null, 2))
             throw new Error(`Migration validation failed: ${validationResult.error.message}`)
           }
           currentData = validationResult.data
+          console.log(`✅ Migration validation passed for ${migration.from} -> ${migration.to}`)
         }
+        
+        console.log(`✅ Successfully applied migration ${migration.from} -> ${migration.to}`)
       }
 
       return {
@@ -233,6 +253,101 @@ export async function migrateData<T = any>(
     return {
       success: false,
       error: `Migration failed: ${error instanceof Error ? error.message : String(error)}`
+    }
+  }
+}
+
+/**
+ * Validation helper to catch common migration issues
+ */
+export function validateMigrationOutput(
+  migrationName: string,
+  output: any,
+  expectedFields: string[] = []
+): { valid: boolean; issues: string[] } {
+  const issues: string[] = []
+
+  // Check for null values in optional string fields (common source of validation errors)
+  function checkForNullInOptionalStrings(obj: any, path: string = '') {
+    if (obj === null || obj === undefined) return
+
+    if (typeof obj === 'object' && !Array.isArray(obj)) {
+      for (const [key, value] of Object.entries(obj)) {
+        const currentPath = path ? `${path}.${key}` : key
+        
+        // Flag fields that are likely optional strings but contain null
+        if (value === null && (
+          key.includes('At') || // timestamps like lastUploadedAt
+          key.includes('Url') || // URLs
+          key.includes('Path') || // paths
+          key.includes('Code') || // codes
+          key.includes('Email') || // emails
+          key.endsWith('Id') || // IDs
+          key.endsWith('Name') // names
+        )) {
+          issues.push(`⚠️  ${currentPath} is null but should be undefined for optional string fields`)
+        }
+        
+        if (typeof value === 'object') {
+          checkForNullInOptionalStrings(value, currentPath)
+        }
+      }
+    } else if (Array.isArray(obj)) {
+      obj.forEach((item, index) => {
+        checkForNullInOptionalStrings(item, `${path}[${index}]`)
+      })
+    }
+  }
+
+  // Perform validation checks
+  if (!output) {
+    issues.push(`Migration ${migrationName} returned null/undefined output`)
+  } else {
+    checkForNullInOptionalStrings(output)
+    
+    // Check for expected fields
+    for (const field of expectedFields) {
+      if (!(field in output)) {
+        issues.push(`Missing expected field: ${field}`)
+      }
+    }
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues
+  }
+}
+
+/**
+ * Enhanced migration wrapper with validation
+ */
+export function createSafeMigration<TFrom = any, TTo = any>(
+  migration: Migration<TFrom, TTo>,
+  expectedFields: string[] = []
+): Migration<TFrom, TTo> {
+  return {
+    ...migration,
+    migrate: (data: TFrom): TTo => {
+      console.log(`🔄 Starting migration: ${migration.from} -> ${migration.to}`)
+      
+      const result = migration.migrate(data)
+      
+      // Validate the result
+      const validation = validateMigrationOutput(
+        `${migration.from}->${migration.to}`,
+        result,
+        expectedFields
+      )
+      
+      if (!validation.valid) {
+        console.warn(`⚠️  Migration ${migration.from} -> ${migration.to} has validation warnings:`)
+        validation.issues.forEach(issue => console.warn(`   ${issue}`))
+      } else {
+        console.log(`✅ Migration ${migration.from} -> ${migration.to} passed validation checks`)
+      }
+      
+      return result
     }
   }
 }

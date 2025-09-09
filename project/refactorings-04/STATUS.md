@@ -5,8 +5,8 @@ This status file is updated after each phase to reflect progress and next steps.
 ## Phase Checklist
 - [x] Phase 1: Ports & Adapters Skeleton (no behavior change) ✅ COMPLETED
 - [x] Phase 2: Config & Feature Flags (centralized, typed) ✅ COMPLETED
-- [ ] Phase 3: Schemas & Migrations (App/Org JSON contracts)
-- [ ] Phase 4: EventService via Adapter (flagged; mocks default)
+- [x] Phase 3: Schemas & Migrations (App/Org JSON contracts) ✅ COMPLETED
+- [x] Phase 4: EventService via Adapter (flagged; mocks default) ✅ COMPLETED
 - [ ] Phase 5: React Query Read-Only (events/org reads)
 - [ ] Phase 6: Wizard Forms: RHF + Zod + Draft Autosave
 - [ ] Phase 7: Blob/Registry Services Read-Only (list via blobs)
@@ -15,8 +15,8 @@ This status file is updated after each phase to reflect progress and next steps.
 - [ ] Phase 10: Tests, Observability, Cleanup
 
 ## Current Phase
-- **Phase 2 COMPLETED** ✅
-- Ready to proceed with Phase 3: Schemas & Migrations
+- **Phase 4 COMPLETED** ✅
+- Ready to proceed with Phase 5: React Query Read-Only
 
 ## Phase 1 Completion Summary
 **Completed:** 2025-09-08
@@ -48,6 +48,41 @@ This status file is updated after each phase to reflect progress and next steps.
 - ✅ No runtime behavior changes - purely additive
 
 **Next:** Phase 3 will add schema validation and migrations for App/Org JSON contracts.
+
+## Phase 3 Completion Summary
+**Completed:** 2025-09-08
+- ✅ Added `CURRENT_APP_SCHEMA_VERSION` constant to `src/types/appData.schemas.ts`
+- ✅ Added `CURRENT_ORG_SCHEMA_VERSION` constant to `src/types/orgData.schemas.ts`
+- ✅ Updated schema definitions to use version constants
+- ✅ Created `src/lib/migrations/` directory with typed migration utilities:
+  - `appJson.migrations.ts` - App JSON migration functions with fallback defaults
+  - `orgJson.migrations.ts` - Org JSON migration functions with validation helpers
+  - `index.ts` - Centralized exports for all migration utilities
+  - `README.md` - Usage documentation and validation examples
+- ✅ Added placeholder migration functions for future version upgrades (v1.0→v1.1, v1.1→v1.2)
+- ✅ All TypeScript compilation passes without errors
+- ✅ No runtime behavior changes - purely additive
+
+**Next:** Phase 4 will implement EventService adapter with feature flag controls.
+
+## Phase 4 Completion Summary
+**Completed:** 2025-09-08
+- ✅ Created `MockEventAdapter` implementing `EventRepoPort` with existing mock logic
+- ✅ Created `BlobEventAdapter` implementing `EventRepoPort` using blob-backed data access
+- ✅ Implemented `EventAdapterFactory` with singleton pattern for adapter selection
+- ✅ Added feature flag integration using `repository.enableBlobEvents` flag
+- ✅ Updated `EventService.ts` to delegate to adapters with legacy fallback
+- ✅ Maintained backward compatibility with existing `OrgEvent` interface
+- ✅ Added comprehensive error handling and console logging for debugging
+- ✅ All TypeScript compilation passes and build succeeds
+- ✅ No breaking changes - mocks remain default when feature flags are OFF
+
+**Key Files Created:**
+- `src/infra/http/events.mock.adapter.ts` - Mock adapter for default behavior
+- `src/infra/storage/events.blob.adapter.ts` - Blob-backed read-only adapter  
+- `src/infra/events.adapter.factory.ts` - Adapter selection composition point
+
+**Next:** Phase 5 will add React Query for read-only operations and server state management.
 
 ## Notes
 - Keep all changes additive until a phase explicitly switches code paths behind a feature flag.

@@ -9,16 +9,18 @@ import { EventRepoPort } from '../ports/event.repo.port'
 import { OrgRepoPort } from '../ports/org.repo.port'
 import { MediaPort } from '../ports/media.port'
 import { BlobEventRepoAdapter, BlobOrgRepoAdapter } from './storage/blob.adapter'
+import { AzureTableEventRepoAdapter, AzureTableOrgRepoAdapter } from './storage/azure.table.adapter'
 import { CloudinaryMediaAdapter } from './media/cloudinary.adapter'
-import { getConfig, getFlags } from '../config'
+import { config } from '../config/config'
+import { flags } from '../config/flags'
 
 /**
  * Registry configuration
  */
 interface RegistryConfig {
-  storageProvider: 'blob' | 'http' | 'mock'
+  storageProvider: 'blob' | 'azure' | 'http' | 'mock'
   mediaProvider: 'cloudinary' | 'mock'
-  eventProvider: 'blob' | 'http' | 'mock'
+  eventProvider: 'blob' | 'azure' | 'http' | 'mock'
   enableCaching: boolean
   enableMetrics: boolean
 }
@@ -144,15 +146,33 @@ export class AdapterRegistry {
    * Load configuration from environment and feature flags
    */
   private loadConfig(): RegistryConfig {
-    const config = getConfig()
-    const flags = getFlags()
-
+    const useAzureTables = flags.repository.enableAzureTables
+    const readAzureFirst = flags.repository.readFromAzureFirst
+    
+    // Determine storage provider based on Azure Table flags
+    let storageProvider: RegistryConfig['storageProvider'] = 'blob'
+    let eventProvider: RegistryConfig['eventProvider'] = 'blob'
+    
+    if (useAzureTables) {
+      if (readAzureFirst) {
+        storageProvider = 'azure'
+        eventProvider = 'azure'
+        console.log('🔧 AdapterRegistry: Using Azure Tables as primary (readFromAzureFirst=true)')
+      } else {
+        storageProvider = 'blob' // Keep blob as primary for dual-write phase
+        eventProvider = 'blob'
+        console.log('🔧 AdapterRegistry: Azure Tables enabled but blob remains primary for dual-write')
+      }
+    } else {
+      console.log('🔧 AdapterRegistry: Using blob storage (enableAzureTables=false)')
+    }
+    
     return {
-      storageProvider: flags.repository.enableBlobEvents ? 'blob' : 'mock',
-      mediaProvider: flags.media.enableVideoUpload ? 'cloudinary' : 'mock',
-      eventProvider: flags.repository.enableBlobEvents ? 'blob' : 'mock',
-      enableCaching: config.performance.enableCaching,
-      enableMetrics: config.monitoring.enableMetrics
+      storageProvider,
+      mediaProvider: 'cloudinary', // Always use Cloudinary for media
+      eventProvider,
+      enableCaching: true, // Default to enabled
+      enableMetrics: flags.observability.enablePerformanceMonitoring
     }
   }
 
@@ -163,6 +183,7 @@ export class AdapterRegistry {
     return {
       eventRepo: {
         blob: () => new BlobEventRepoAdapter(),
+        azure: () => new AzureTableEventRepoAdapter(),
         http: () => {
           throw new Error('HTTP event repository adapter not yet implemented')
         },
@@ -170,6 +191,7 @@ export class AdapterRegistry {
       },
       orgRepo: {
         blob: () => new BlobOrgRepoAdapter(),
+        azure: () => new AzureTableOrgRepoAdapter(),
         http: () => {
           throw new Error('HTTP org repository adapter not yet implemented')
         },

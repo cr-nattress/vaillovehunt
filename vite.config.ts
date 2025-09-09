@@ -67,6 +67,10 @@ export default defineConfig({
       // Allow serving files outside of root for better flexibility
       strict: false,
     },
+    // Proxy API requests to backend to avoid CORS during development
+    proxy: {
+      '/api': 'http://localhost:3001',
+    },
   },
   // Preview server configuration
   preview: {

@@ -22,9 +22,16 @@
     "docs:serve": "docusaurus serve website",
     "sb:dev": "storybook dev -p 6006",
     "sb:build": "storybook build",
-    "api:build": "typedoc"
+    "api:build": "typedoc",
+    "test:azure": "tsx scripts/test-azure-tables.ts",
+    "test:azure:basic": "tsx scripts/test-azure-basic.ts",
+    "migrate:blob-to-azure": "tsx scripts/migrate-blob-to-azure-tables.ts",
+    "validate:azure-schemas": "tsx scripts/validate-and-repair-schemas.ts",
+    "backup:azure-tables": "tsx scripts/backup-and-restore-azure-tables.ts"
   },
   "dependencies": {
+    "@azure/data-tables": "^13.3.1",
+    "@azure/identity": "^4.11.1",
     "@netlify/blobs": "^10.0.10",
     "@types/morgan": "^1.9.10",
     "cloudinary": "^2.0.1",
