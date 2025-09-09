@@ -95,10 +95,28 @@ export class DualWriteService {
     try {
       console.log(`🌐 DualWrite fallback to server: ${key}`);
       
-      const rawResponse = await apiClient.get<unknown>(`/kv-get/${encodeURIComponent(key)}`);
-      const response = validateSchema(KVGetResponseSchema, rawResponse, 'KV get response');
-
-      if (response.exists && response.value !== null) {
+      // Handle app.json specially - use Azure-based endpoint
+      if (key === 'app.json') {
+        const rawResponse = await apiClient.get<unknown>(`/app-get?key=${encodeURIComponent(key)}`);
+        const response = validateSchema(KVGetResponseSchema, rawResponse, 'App get response');
+        
+        if (response.exists && response.value !== null) {
+          // Cache in localStorage for next time
+          try {
+            LocalStorageService.set(key, response.value);
+          } catch (error) {
+            console.warn(`⚠️ Failed to cache in localStorage: ${key}`, error);
+          }
+          
+          console.log(`✅ DualWrite server fallback success: ${key}`);
+          return response.value;
+        }
+      } else {
+        // For other keys, try the old kv-get endpoint (will fail gracefully)
+        const rawResponse = await apiClient.get<unknown>(`/kv-get?key=${encodeURIComponent(key)}`);
+        const response = validateSchema(KVGetResponseSchema, rawResponse, 'KV get response');
+        
+        if (response.exists && response.value !== null) {
         console.log(`✅ DualWrite found on server: ${key}`);
         
         // Try to cache in localStorage for next time
@@ -108,7 +126,8 @@ export class DualWriteService {
           console.warn(`⚠️ Failed to cache server value in localStorage:`, error);
         }
         
-        return response.value;
+          return response.value;
+        }
       }
 
     } catch (error) {

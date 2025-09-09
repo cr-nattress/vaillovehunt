@@ -1,8 +1,9 @@
 // netlify/functions/init-app.ts
 import { NetlifyFunctionsResponse, HandlerEvent, HandlerContext } from "@netlify/functions";
-import { getStore } from "@netlify/blobs";
+import { AzureTableOrgRepoAdapter } from "../../src/infra/storage/azure.table.adapter";
+import { AppData } from "../../src/types/appData.schemas";
 
-const INITIAL_APP_DATA = {
+const INITIAL_APP_DATA: AppData = {
   schemaVersion: "1.2.0",
   updatedAt: new Date().toISOString(),
   app: {
@@ -75,42 +76,50 @@ export const handler = async (event: HandlerEvent, context: HandlerContext): Pro
       };
     }
 
-    console.log('🚀 Initializing app.json in production...');
+    console.log('🚀 Initializing app.json in Azure Tables...');
 
-    const store = getStore("kv");
+    const orgAdapter = new AzureTableOrgRepoAdapter();
     
     // Check if app.json already exists
-    console.log('🔍 Checking if app.json already exists...');
-    const existing = await store.getJSON('app.json');
+    console.log('🔍 Checking if app data already exists...');
     
-    if (existing !== null) {
-      console.log('⚠️ app.json already exists');
-      return {
-        statusCode: 409,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          error: "app.json already exists",
-          message: "Use force=true to overwrite",
-          timestamp: new Date().toISOString()
-        }),
-      };
+    try {
+      const existing = await orgAdapter.getApp();
+      if (existing) {
+        console.log('⚠️ app data already exists');
+        return {
+          statusCode: 409,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            error: "app.json already exists",
+            message: "Use force=true to overwrite",
+            timestamp: new Date().toISOString()
+          }),
+        };
+      }
+    } catch (error: any) {
+      // If error indicates not found, that's expected - continue with creation
+      if (!error.message?.includes('not found') && error.statusCode !== 404) {
+        throw error;
+      }
+      console.log('✅ No existing app data found, proceeding with initialization');
     }
     
     // Create app.json
-    console.log('💾 Creating app.json...');
-    await store.setJSON('app.json', INITIAL_APP_DATA);
+    console.log('💾 Creating app data in Azure Tables...');
+    const etag = await orgAdapter.upsertApp({ appData: INITIAL_APP_DATA });
     
     // Verify it was stored
-    const verification = await store.getJSON('app.json');
+    const verification = await orgAdapter.getApp();
     
     if (!verification) {
-      throw new Error('Failed to verify app.json creation');
+      throw new Error('Failed to verify app data creation');
     }
     
-    console.log('✅ Successfully initialized app.json');
+    console.log('✅ Successfully initialized app data in Azure Tables');
     
     return {
       statusCode: 201,
@@ -120,14 +129,15 @@ export const handler = async (event: HandlerEvent, context: HandlerContext): Pro
       },
       body: JSON.stringify({
         success: true,
-        message: "app.json initialized successfully",
+        message: "app.json initialized successfully in Azure Tables",
         data: {
           schemaVersion: INITIAL_APP_DATA.schemaVersion,
           organizationCount: INITIAL_APP_DATA.organizations.length,
-          dateEntries: Object.keys(INITIAL_APP_DATA.byDate).length
+          dateEntries: Object.keys(INITIAL_APP_DATA.byDate).length,
+          etag
         },
         timestamp: new Date().toISOString(),
-        testUrl: "https://teamhunt.pro/.netlify/functions/kv-get?key=app.json"
+        testUrl: "https://teamhunt.pro/.netlify/functions/app-get?key=app.json"
       }),
     };
     

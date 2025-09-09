@@ -61,7 +61,8 @@
       "Bash(start azurite --location ./azurite-data)",
       "Bash(timeout:*)",
       "Bash(npm run:*)",
-      "Bash(cmd /c:*)"
+      "Bash(cmd /c:*)",
+      "WebFetch(domain:teamhunt.pro)"
     ],
     "deny": [],
     "ask": []
